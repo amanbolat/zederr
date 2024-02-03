@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package zederr.v1;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/amanbolat/zederr/pkg/pb/v1;pbzederrv1";
+
+message Error {
+  string id = 1;
+  int64 http_code = 2;
+  uint32 grpc_code = 3;
+  google.protobuf.Struct params = 4;
+}

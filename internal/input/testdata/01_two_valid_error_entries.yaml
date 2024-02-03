@@ -1,0 +1,16 @@
+common.file_too_large:
+  http_code: 400
+  grpc_code: 3
+  description: If the file received by server is larger than applied limit this error should be returned
+  translations:
+    en: "File is too large, max size is {{ .MaxSize | int }}"
+    zh_cn: "上传的文件不能大于{{ .MaxSize | int }}"
+
+auth.unauthorized:
+  http_code: 403
+  grpc_code: 1
+  description: User is not authorized to perform this action
+  translations:
+    en: "Please login to perform this action"
+    zh_cn: "请登录再进行操作"
+
