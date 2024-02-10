@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"text/template/parse"
 
-	"github.com/amanbolat/zederr/internal/core"
+	"github.com/amanbolat/zederr/pkg/codegen/core"
 	"github.com/k0kubun/pp/v3"
 )
 
 // Parser is an implementation of core.Parser interface.
 type Parser struct {
-	fields     []core.Param
+	params     []core.Param
 	leftDelim  string
 	rightDelim string
 	debug      bool
@@ -30,7 +30,7 @@ func NewParser(leftDelim, rightDelim string, cfg *Config) *Parser {
 	}
 
 	return &Parser{
-		fields:     nil,
+		params:     nil,
 		leftDelim:  leftDelim,
 		rightDelim: rightDelim,
 		debug:      defCfg.Debug,
@@ -66,7 +66,7 @@ func (p *Parser) Parse(txt string) (_ map[string]core.Param, _ string, err error
 
 	fieldMap := make(map[string]core.Param)
 
-	for _, f := range p.fields {
+	for _, f := range p.params {
 		fieldMap[f.Name] = f
 	}
 
@@ -93,7 +93,7 @@ func (p *Parser) parse(root parse.Node) error {
 			return nil
 		}
 
-		err := p.tryParseField(node.Pipe, node.Pipe.Cmds)
+		err := p.tryParseParam(node.Pipe, node.Pipe.Cmds)
 		if err != nil {
 			return err
 		}
@@ -102,8 +102,8 @@ func (p *Parser) parse(root parse.Node) error {
 	return nil
 }
 
-func (p *Parser) tryParseField(pipe *parse.PipeNode, cmdNodes []*parse.CommandNode) error {
-	f := core.Param{
+func (p *Parser) tryParseParam(pipe *parse.PipeNode, cmdNodes []*parse.CommandNode) error {
+	param := core.Param{
 		Name: "",
 		Type: "",
 	}
@@ -112,40 +112,43 @@ func (p *Parser) tryParseField(pipe *parse.PipeNode, cmdNodes []*parse.CommandNo
 		return nil
 	}
 
-	fieldCmdNode := cmdNodes[0]
+	paramCmdNode := cmdNodes[0]
 
-	switch node := fieldCmdNode.Args[0].(type) {
+	pp.Println(cmdNodes[0].Args)
+
+	// Retrieve param name.
+	switch node := paramCmdNode.Args[0].(type) {
 	case *parse.FieldNode:
-		fieldName, err := p.extractFieldNameFromFieldNode(node)
+		paramName, err := p.extractParamNameFromFieldNode(node)
 		if err != nil {
 			return err
 		}
 
-		f.Name = fieldName
-	// Handle the case when the type function is before the field name:
+		param.Name = paramName
+	// Handle the case when the type function is before the param name:
 	//
 	// {{ string .Param}}
 	case *parse.IdentifierNode:
 		if len(node.Ident) == 0 {
 			return nil
 		}
-		f.Type = node.Ident
+		param.Type = node.Ident
 
-		if len(fieldCmdNode.Args) < 2 {
-			return fmt.Errorf("field name was not found; pos [%d]", fieldCmdNode.Pos)
+		if len(paramCmdNode.Args) < 2 {
+			return fmt.Errorf("field name was not found; pos [%d]", paramCmdNode.Pos)
 		}
 
-		fieldNode, ok := fieldCmdNode.Args[1].(*parse.FieldNode)
+		fieldNode, ok := paramCmdNode.Args[1].(*parse.FieldNode)
 		if !ok {
-			return fmt.Errorf("failed to cast to FieldNode; pos [%d]", fieldCmdNode.Pos)
+			return fmt.Errorf("failed to cast to FieldNode; pos [%d]", paramCmdNode.Pos)
 		}
 
-		fieldName, err := p.extractFieldNameFromFieldNode(fieldNode)
+		paramName, err := p.extractParamNameFromFieldNode(fieldNode)
 		if err != nil {
 			return err
 		}
 
-		f.Name = fieldName
+		param.Name = paramName
 	// If a node type is not handled, just ignore it.
 	default:
 		return nil
@@ -153,30 +156,30 @@ func (p *Parser) tryParseField(pipe *parse.PipeNode, cmdNodes []*parse.CommandNo
 
 	// Handle the case when the type function is before the field name:
 	// Example: {{ string .Param}}
-	if len(cmdNodes) >= 2 && len(cmdNodes[1].Args) > 0 && f.Type != "" {
+	if len(cmdNodes) >= 2 && len(cmdNodes[1].Args) > 0 && param.Type != "" {
 		fieldNode, ok := cmdNodes[1].Args[0].(*parse.FieldNode)
 		if !ok {
 			return fmt.Errorf("field node was not found in second command node; pos [%d]", cmdNodes[1].Pos)
 		}
 
-		fieldName, err := p.extractFieldNameFromFieldNode(fieldNode)
+		paramName, err := p.extractParamNameFromFieldNode(fieldNode)
 		if err != nil {
 			return err
 		}
 
-		f.Name = fieldName
+		param.Name = paramName
 
 		pipe.Cmds = pipe.Cmds[1:]
 	}
 
-	// Try to get the type of the field if it's provided after the field name.
+	// Try to get the type of the param if it's provided after the param name.
 	// Example: {{ .Param | string }}
 	//
 	// All the cases where more than one pipe command is used are ignored.
 	// Example: {{ .Param | string | int }}
 	//
 	// It should run only in case when the type was not found.
-	if len(cmdNodes) >= 2 && f.Type == "" {
+	if len(cmdNodes) >= 2 && param.Type == "" {
 		if len(cmdNodes[1].Args) == 0 {
 			return nil
 		}
@@ -184,25 +187,25 @@ func (p *Parser) tryParseField(pipe *parse.PipeNode, cmdNodes []*parse.CommandNo
 		typeNode, ok := (cmdNodes[1].Args[0]).(*parse.IdentifierNode)
 		if !ok {
 			_, c := p.parseTree.ErrorContext(typeNode)
-			return fmt.Errorf("failed to cast the expected parse.Node to parse.IdentifierNode to get the field type; field name [%s], context [%s]", f.Name, c)
+			return fmt.Errorf("failed to cast the expected parse.Node to parse.IdentifierNode to get the field type; param name [%s], context [%s]", param.Name, c)
 		}
-		f.Type = typeNode.Ident
+		param.Type = typeNode.Ident
 
 		// Remove the node with the Param type from the parse tree, as i18n
 		// module doesn't have type functions like `string` and `int`.
 		pipe.Cmds = pipe.Cmds[:1]
 	}
 
-	if f.Type == "" {
-		f.Type = "any"
+	if param.Type == "" {
+		param.Type = "any"
 	}
 
-	p.fields = append(p.fields, f)
+	p.params = append(p.params, param)
 
 	return nil
 }
 
-func (p *Parser) extractFieldNameFromFieldNode(fieldNode *parse.FieldNode) (string, error) {
+func (p *Parser) extractParamNameFromFieldNode(fieldNode *parse.FieldNode) (string, error) {
 	if len(fieldNode.Ident) == 0 {
 		return "", fmt.Errorf("field name was not found; parse.FieldNode has no Idents; pos [%d]", fieldNode.Pos)
 	}
@@ -217,6 +220,6 @@ func (p *Parser) extractFieldNameFromFieldNode(fieldNode *parse.FieldNode) (stri
 }
 
 func (p *Parser) reset() {
-	p.fields = nil
+	p.params = nil
 	p.parseTree = nil
 }

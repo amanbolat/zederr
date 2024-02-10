@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/amanbolat/zederr/internal/input"
+	"github.com/amanbolat/zederr/codegen/input"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )

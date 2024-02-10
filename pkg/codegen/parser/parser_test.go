@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/amanbolat/zederr/internal/core"
-	"github.com/amanbolat/zederr/internal/parser"
+	"github.com/amanbolat/zederr/pkg/codegen/core"
+	"github.com/amanbolat/zederr/pkg/codegen/parser"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -17,23 +17,37 @@ func TestParser(t *testing.T) {
 	testCases := []struct {
 		name                    string
 		actualTranslation       string
-		expecterLocalizableText string
+		expectedLocalizableText string
 		expectedFields          []core.Param
 		shouldFail              bool
 	}{
 		{
 			name:                    "single field with no type",
 			actualTranslation:       "Error with {{ .Param1 }}.",
-			expecterLocalizableText: "Error with {{.Param1}}.",
+			expectedLocalizableText: "Error with {{.Param1}}.",
 			expectedFields:          []core.Param{{Name: "Param1", Type: "any"}},
 			shouldFail:              false,
 		},
 		{
 			name:                    "wrong parameter name – dots are not allowed",
 			actualTranslation:       "Error with {{ .Param1.Param2 }}.",
-			expecterLocalizableText: "",
+			expectedLocalizableText: "",
 			expectedFields:          []core.Param{},
 			shouldFail:              true,
+		},
+		{
+			name:                    "type function before the name should be removed",
+			actualTranslation:       "Error with {{ string .Param1 }}.",
+			expectedLocalizableText: "Error with {{.Param1}}.",
+			expectedFields:          []core.Param{{Name: "Param1", Type: "string"}},
+			shouldFail:              false,
+		},
+		{
+			name:                    "multiple types after the param name",
+			actualTranslation:       "Error with {{ string .Param1 | string | int }}.",
+			expectedLocalizableText: "Error with {{.Param1}}.",
+			expectedFields:          []core.Param{{Name: "Param1", Type: "string"}},
+			shouldFail:              false,
 		},
 	}
 
@@ -50,7 +64,7 @@ func TestParser(t *testing.T) {
 				return strings.Compare(i.Name, j.Name)
 			})
 			assert.Equal(t, testCase.expectedFields, actualFields)
-			assert.Equal(t, testCase.expecterLocalizableText, actualLocalizableText)
+			assert.Equal(t, testCase.expectedLocalizableText, actualLocalizableText)
 		})
 	}
 }

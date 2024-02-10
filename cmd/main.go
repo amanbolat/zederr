@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/amanbolat/zederr/internal/core"
-	"github.com/amanbolat/zederr/internal/input"
-	"github.com/amanbolat/zederr/internal/output"
-	"github.com/amanbolat/zederr/internal/parser"
+	"github.com/amanbolat/zederr/pkg/codegen/core"
+	"github.com/amanbolat/zederr/pkg/codegen/input"
+	"github.com/amanbolat/zederr/pkg/codegen/output"
+	"github.com/amanbolat/zederr/pkg/codegen/parser"
 )
 
 func main() {

@@ -5,5 +5,5 @@ gen-proto:
 	protoc --proto_path=. --go_out=. --go-grpc_out=. \
 	 --go_opt=module=github.com/amanbolat/zederr \
 	 --go-grpc_opt=module=github.com/amanbolat/zederr  \
-	 proto/v1/*.proto
+	 pkg/proto/v1/*.proto
 

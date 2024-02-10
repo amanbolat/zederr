@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/amanbolat/zederr/internal/core"
+	"github.com/amanbolat/zederr/pkg/codegen/core"
 	"gopkg.in/yaml.v3"
 )
 

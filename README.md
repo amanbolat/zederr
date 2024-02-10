@@ -4,24 +4,24 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/amanbolat/zederr)](https://goreportcard.com/report/github.com/amanbolat/zederr)
 [![codecov](https://codecov.io/gh/amanbolat/zederr/branch/master/graph/badge.svg)](https://codecov.io/gh/amanbolat/zederr)
 
-## About
+# About
 
-`zederr` is a tool for error standardization. It provides a way to define errors in a single place and generate code from YAML files. 
+`zederr` is a tool for error codes documentation and code generation. You can define all the errors in one YAML file and generate strictly typed error constructors. All the errors will be automatically localized depending on the user locale. Errors can be passed from one service to another or returned to the end user. 
 
-## What is generated?
+# Features
 
-**Go code:**
+- Unified way to define and document errors.
+- Localized error messages.
+- Strictly typed error constructors in Go.
+- gRPC middleware for easy error handling between services.
 
-- Constructor functions to create strictly typed errors with custom parameters.
-- Error method to convert its parameters to protobuf message.
-- Error method to convert its parameters to `map[string]any`.
+# How to use
 
-**Localization:**
-
-- YAML file with error codes and translations.
-
-
-## YAML file format
+1. Install `zederr` locally.
+2. Create a YAML file with error definitions.
+3. Run `zederr` to generate code.
+4. Use generated error constructors in your code.
+5. Setup middlewares to handle errors between services.
 
 ```yaml
 common.file_too_large:

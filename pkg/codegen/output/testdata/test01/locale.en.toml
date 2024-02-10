@@ -1,0 +1,2 @@
+["core.error"]
+other = "core error {{.Error}}"

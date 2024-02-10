@@ -6,17 +6,21 @@ import (
 	"go/format"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"text/template"
 
 	_ "embed"
 
-	"github.com/amanbolat/zederr/internal/core"
+	"github.com/BurntSushi/toml"
+	"github.com/amanbolat/zederr/pkg/codegen/core"
 	"github.com/iancoleman/strcase"
 )
 
 var (
 	// keywords is a map of Go keywords, package names, builtins and param names that should be renamed.
 	keywords = map[string]struct{}{
+		// Go keywords.
 		"break":       {},
 		"default":     {},
 		"func":        {},
@@ -55,7 +59,7 @@ var (
 //go:embed templates/go_errors.tmpl
 var goErrorsTemplate string
 
-//go:embed templates/go_error_locales_embed.tmpl
+//go:embed templates/go_embed.tmpl
 var goErrorLocalesEmbed string
 
 type goErrorsTemplateData struct {
@@ -74,6 +78,16 @@ type goErrorLocalesTemplateData struct {
 	Locales     []localeTemplateData
 }
 
+// localeEntry represents a single translation entry in a locale file.
+//
+// Example toml representation:
+//
+//	["error.auth.unauthorized"] <-- provided by map key
+//	other = "请登录再进行操作" <-- localeEntry
+type localeEntry struct {
+	Other string `toml:"other"`
+}
+
 type GoExporter struct{}
 
 func NewGoExporter() *GoExporter {
@@ -81,69 +95,32 @@ func NewGoExporter() *GoExporter {
 }
 
 func (e *GoExporter) Export(cfg core.GoExporterConfig, errors []core.Error) error {
-	renderedErrors, err := e.renderErrors(cfg, errors)
-	if err != nil {
-		return fmt.Errorf("GoExporter: failed to render errors: %w", err)
-	}
-
-	renderedLocalesEmbed, err := e.renderLocalesEmbed(cfg, errors)
-	if err != nil {
-		return fmt.Errorf("GoExporter: failed to render locales embed: %w", err)
-	}
-
-	if cfg.Output != nil {
-		_, err = io.Copy(cfg.Output, renderedErrors)
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to write to output: %w", err)
-		}
-
-		_, err = io.Copy(cfg.Output, renderedLocalesEmbed)
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to write to output: %w", err)
-		}
-	}
-
 	if cfg.OutputPath != "" {
-		err = os.MkdirAll(cfg.OutputPath, 0755)
+		err := os.MkdirAll(cfg.OutputPath, 0755)
 		if err != nil {
 			return fmt.Errorf("GoExporter: failed to create output directory: %w", err)
 		}
+	}
 
-		errorFile, err := os.Create(cfg.OutputPath + "/errors.go")
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to create output file: %w", err)
-		}
+	err := e.renderErrors(cfg, errors)
+	if err != nil {
+		return fmt.Errorf("failed to render errors: %w", err)
+	}
 
-		_, err = io.Copy(errorFile, renderedErrors)
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to write to output file: %w", err)
-		}
+	err = e.renderLocalesEmbed(cfg, errors)
+	if err != nil {
+		return fmt.Errorf("failed to render locales embed: %w", err)
+	}
 
-		err = errorFile.Close()
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to close output file: %w", err)
-		}
-
-		localesEmbedFile, err := os.Create(cfg.OutputPath + "/error_locales_embed.go")
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to create output file: %w", err)
-		}
-
-		_, err = io.Copy(localesEmbedFile, renderedLocalesEmbed)
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to write to output file: %w", err)
-		}
-
-		err = localesEmbedFile.Close()
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to close output file: %w", err)
-		}
+	err = e.renderLocales(cfg, errors)
+	if err != nil {
+		return fmt.Errorf("failed to render locales: %w", err)
 	}
 
 	return nil
 }
 
-func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, errors []core.Error) (io.Reader, error) {
+func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, errors []core.Error) error {
 	locales := make(map[string]struct{})
 
 	for _, coreErr := range errors {
@@ -155,16 +132,19 @@ func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, errors []core
 	var localesTemplateData []localeTemplateData
 	for locale := range locales {
 		localesTemplateData = append(localesTemplateData, localeTemplateData{
-			FileName: fmt.Sprintf("error_locales.%s.toml", locale),
+			FileName: fmt.Sprintf("locale.%s.toml", locale),
 			Lang:     locale,
 		})
 	}
 
 	tmpl := template.New("")
+	tmpl.Funcs(template.FuncMap{
+		"toUpper": strings.ToUpper,
+	})
 
 	_, err := tmpl.Parse(goErrorLocalesEmbed)
 	if err != nil {
-		return nil, fmt.Errorf("GoExporter: failed to parse template: %w", err)
+		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	var buf bytes.Buffer
@@ -173,30 +153,47 @@ func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, errors []core
 		Locales:     localesTemplateData,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("GoExporter: failed to execute template: %w", err)
+		return fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	formattedSource, err := format.Source(buf.Bytes())
 	if err != nil {
-		return nil, fmt.Errorf("GoExporter: failed to format source: %w", err)
+		return fmt.Errorf("failed to format generated go code: %w", err)
 	}
 
 	outputBuf := bytes.NewReader(formattedSource)
 
-	return outputBuf, nil
+	if cfg.Output != nil {
+		_, err = io.Copy(cfg.Output, outputBuf)
+		if err != nil {
+			return fmt.Errorf("failed to write to output: %w", err)
+		}
+	}
+
+	if cfg.OutputPath != "" {
+		fileName := filepath.Join(cfg.OutputPath, "error_locales_embed.go")
+
+		err = os.WriteFile(fileName, formattedSource, 0666)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, errors []core.Error) (io.Reader, error) {
+func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, errors []core.Error) error {
 	tmpl := template.New("")
 	tmpl.Funcs(template.FuncMap{
 		"errorConstructorParams": errorConstructorParams,
 		"toLowerCamel":           strcase.ToLowerCamel,
 		"toParamName":            toParamName,
+		"toUpper":                strings.ToUpper,
 	})
 
 	_, err := tmpl.Parse(goErrorsTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("GoExporter: failed to parse template: %w", err)
+		return fmt.Errorf("GoExporter: failed to parse template: %w", err)
 	}
 
 	var buf bytes.Buffer
@@ -210,17 +207,73 @@ func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, errors []core.Error
 		Errors: errors,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("GoExporter: failed to execute template: %w", err)
+		return fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	formattedSource, err := format.Source(buf.Bytes())
 	if err != nil {
-		return nil, fmt.Errorf("GoExporter: failed to format source: %w", err)
+		return fmt.Errorf("failed to format generated go code: %w", err)
 	}
 
 	outputBuf := bytes.NewReader(formattedSource)
 
-	return outputBuf, nil
+	if cfg.Output != nil {
+		_, err = io.Copy(cfg.Output, outputBuf)
+		if err != nil {
+			return fmt.Errorf("failed to write to output: %w", err)
+		}
+	}
+
+	if cfg.OutputPath != "" {
+		fileName := filepath.Join(cfg.OutputPath, "errors.go")
+
+		err = os.WriteFile(fileName, formattedSource, 0666)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *GoExporter) renderLocales(cfg core.GoExporterConfig, errors []core.Error) error {
+	errMaps := map[string]map[string]localeEntry{}
+	for _, coreErr := range errors {
+		for lang, translation := range coreErr.Translations() {
+			if _, ok := errMaps[lang]; !ok {
+				errMaps[lang] = make(map[string]localeEntry)
+			}
+			errMaps[lang][coreErr.ID()] = localeEntry{Other: translation}
+		}
+	}
+
+	for lang, v := range errMaps {
+		var buf bytes.Buffer
+		enc := toml.NewEncoder(&buf)
+		enc.Indent = ""
+		err := enc.Encode(v)
+		if err != nil {
+			return fmt.Errorf("failed to encode toml: %w", err)
+		}
+
+		if cfg.Output != nil {
+			_, err = io.Copy(cfg.Output, &buf)
+			if err != nil {
+				return fmt.Errorf("failed to write to output: %w", err)
+			}
+		}
+
+		if cfg.OutputPath != "" {
+			fileName := filepath.Join(cfg.OutputPath, fmt.Sprintf("locale.%s.toml", lang))
+
+			err = os.WriteFile(fileName, buf.Bytes(), 0666)
+			if err != nil {
+				return fmt.Errorf("failed to write %s error locale messages to file: %w", lang, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func errorConstructorParams(e core.Error) string {
