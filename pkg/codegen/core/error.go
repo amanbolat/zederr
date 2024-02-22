@@ -1,23 +1,23 @@
 package core
 
 import (
-	"strings"
-
-	"github.com/iancoleman/strcase"
 	"google.golang.org/grpc/codes"
 )
 
 type Error struct {
-	id           string
-	grpcCode     codes.Code
-	httpCode     int
-	description  string
-	translations map[string]string
-	fields       []Param
+	code            string
+	grpcCode        codes.Code
+	httpCode        int
+	description     string
+	title           string
+	publicMessage   string
+	internalMessage string
+	localization    Localization
+	arguments       []Argument
 }
 
-func (e Error) ID() string {
-	return e.id
+func (e Error) Code() string {
+	return e.code
 }
 
 func (e Error) GrpcCode() codes.Code {
@@ -32,27 +32,13 @@ func (e Error) Description() string {
 	return e.description
 }
 
-func (e Error) Translations() map[string]string {
-	m := make(map[string]string, len(e.translations))
-	for k, v := range e.translations {
-		m[k] = v
-	}
-
-	return m
+func (e Error) Translations() Localization {
+	return e.localization
 }
 
-func (e Error) Name() string {
-	arr := strings.Split(e.id, ".")
-	if len(arr) == 0 {
-		return ""
-	}
-
-	return strcase.ToCamel(strings.Join(arr, "_"))
-}
-
-func (e Error) Fields() []Param {
-	arr := make([]Param, len(e.fields))
-	copy(arr, e.fields)
+func (e Error) Arguments() []Argument {
+	arr := make([]Argument, len(e.arguments))
+	copy(arr, e.arguments)
 
 	return arr
 }

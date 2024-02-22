@@ -3,48 +3,112 @@ package core
 import (
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
-	"unicode"
+	"unicode/utf8"
 
 	"github.com/iancoleman/strcase"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
-	"golang.org/x/exp/utf8string"
 	"golang.org/x/text/language"
 	"google.golang.org/grpc/codes"
 )
 
+var (
+	errorCodeRegex = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$")
+)
+
+// ErrorBuilder is responsible for creating Error instances.
 type ErrorBuilder struct {
-	p Parser
+	parser        Parser
+	defaultLocale language.Tag
+
+	// The map is used to check for duplicate error codes.
+	uniqueErrMap map[string]struct{}
 }
 
-func NewErrorBuilder(p Parser) *ErrorBuilder {
+// NewErrorBuilder creates a new instance of ErrorBuilder.
+func NewErrorBuilder(parser Parser, defaultLocale language.Tag) *ErrorBuilder {
 	return &ErrorBuilder{
-		p: p,
+		parser:        parser,
+		defaultLocale: defaultLocale,
+		uniqueErrMap:  map[string]struct{}{},
 	}
 }
 
+// NewError creates a new instance of Error.
 func (b *ErrorBuilder) NewError(
-	id string,
+	code string,
 	grpcCode codes.Code,
 	httpCode int,
 	description string,
-	translations map[string]string,
+	title string,
+	publicMessage string,
+	internalMessage string,
+	deprecatedMessage string,
+	arguments []Argument,
+	localization Localization,
 ) (Error, error) {
-	id = strings.TrimSpace(id)
-	description = strings.TrimSpace(description)
+	code = strings.TrimSpace(code)
 
-	if id == "" {
-		return Error{}, fmt.Errorf("error id is empty")
+	if code == "" {
+		return Error{}, fmt.Errorf("error code is empty")
 	}
 
-	idArr := strings.Split(id, ".")
-	if len(idArr) < 2 {
-		return Error{}, fmt.Errorf("error id format is wrong; got %s", id)
+	if utf8.ValidString(code) {
+		return Error{}, fmt.Errorf("error code is not a valid UTF-8 string; got %s", code)
+	}
+	// We convert the error code to camel case for a few reasons:
+	// - error constructors in go are usually named like `NewErrorName`.
+	// - avoid confusion if the different error names are similar.
+	code = strcase.ToCamel(code)
+
+	if !errorCodeRegex.MatchString(code) {
+		return Error{}, fmt.Errorf("error code is not valid; it should match the regex patter: %s; got %s", errorCodeRegex.String(), code)
+	}
+
+	description = strings.TrimSpace(description)
+	title = strings.TrimSpace(title)
+	publicMessage = strings.TrimSpace(publicMessage)
+	internalMessage = strings.TrimSpace(internalMessage)
+	deprecatedMessage = strings.TrimSpace(deprecatedMessage)
+
+	if description == "" {
+		return Error{}, fmt.Errorf("description is empty")
+	}
+
+	if title == "" {
+		return Error{}, fmt.Errorf("title is empty")
+	}
+
+	if publicMessage == "" {
+		return Error{}, fmt.Errorf("public message is empty")
+	}
+
+	if internalMessage == "" {
+		return Error{}, fmt.Errorf("internal message is empty")
+	}
+
+	if utf8.ValidString(description) {
+		return Error{}, fmt.Errorf("description is not a valid UTF-8 string; got %s", description)
+	}
+
+	if utf8.ValidString(title) {
+		return Error{}, fmt.Errorf("title is not a valid UTF-8 string; got %s", title)
+	}
+
+	if utf8.ValidString(publicMessage) {
+		return Error{}, fmt.Errorf("public message is not a valid UTF-8 string; got %s", publicMessage)
+	}
+
+	if utf8.ValidString(internalMessage) {
+		return Error{}, fmt.Errorf("internal message is not a valid UTF-8 string; got %s", internalMessage)
+	}
+
+	if utf8.ValidString(deprecatedMessage) {
+		return Error{}, fmt.Errorf("deprecated message is not a valid UTF-8 string; got %s", deprecatedMessage)
 	}
 
 	if grpcCode == codes.OK {
-		return Error{}, fmt.Errorf("grpc code should not be OK; got %s for error with id %s", grpcCode.String(), id)
+		return Error{}, fmt.Errorf("grpc code should not be OK; got %s for error with code %s", grpcCode.String(), code)
 	}
 
 	if grpcCode > codes.Unauthenticated {
@@ -55,71 +119,36 @@ func (b *ErrorBuilder) NewError(
 		slog.Warn("http code is not in the range of standard http codes", slog.Uint64("http_code", uint64(httpCode)))
 	}
 
-	if description == "" {
-		slog.Warn("description is empty", slog.String("id", id))
+	if _, ok := b.uniqueErrMap[code]; ok {
+		return Error{}, fmt.Errorf("duplicate error code %s", code)
 	}
 
-	if translations == nil {
-		return Error{}, fmt.Errorf("translation are not provided; error id %s", id)
+	b.uniqueErrMap[code] = struct{}{}
+
+	argumentsMap := make(map[string]struct{})
+	for _, arg := range arguments {
+		if _, ok := argumentsMap[arg.Name()]; ok {
+			return Error{}, fmt.Errorf("duplicate argument name %s", arg.Name())
+		}
+
+		argumentsMap[arg.Name()] = struct{}{}
 	}
 
-	newTranslationsMap := make(map[string]string)
-
-	fields := map[string]Param{}
-
-	for lang, txt := range translations {
-		_, err := language.Parse(lang)
-		if err != nil {
-			return Error{}, fmt.Errorf("failed to parse language tag %s for error with id %s: %w", lang, id, err)
+	for argName := range localization.Arguments() {
+		if _, ok := argumentsMap[argName]; !ok {
+			return Error{}, fmt.Errorf("localization has argument %s that is not present in the error arguments", argName)
 		}
-
-		txt = strings.TrimSpace(txt)
-		if txt == "" {
-			return Error{}, fmt.Errorf("translation for language %s is empty for error with id %s", lang, id)
-		}
-
-		fieldMap, localizableMessage, err := b.p.Parse(txt)
-		if err != nil {
-			return Error{}, fmt.Errorf("failed to parse translation for language %s for error with id %s: %w", lang, id, err)
-		}
-
-		for _, v := range fieldMap {
-			if i, ok := fields[v.Name]; ok && i.Type != v.Type {
-				return Error{}, fmt.Errorf("field %s of error with id %s has different types in multiple translations", v.Name, id)
-			}
-
-			v.Name = strings.TrimSpace(v.Name)
-			if v.Name == "" {
-				return Error{}, fmt.Errorf("found empty field name for error with id %s", id)
-			}
-
-			if !utf8string.NewString(v.Name).IsASCII() {
-				return Error{}, fmt.Errorf("field name %s of error with id %s is not ASCII string", v.Name, id)
-			}
-
-			if !unicode.IsLetter([]rune(v.Name)[0]) {
-				return Error{}, fmt.Errorf("field name %s of error with id %s should start with letter", v.Name, id)
-			}
-
-			v.Name = strcase.ToCamel(v.Name)
-
-			fields[v.Name] = v
-		}
-
-		newTranslationsMap[lang] = localizableMessage
 	}
-
-	fieldsArr := maps.Values(fields)
-	slices.SortFunc(fieldsArr, func(i, j Param) int {
-		return strings.Compare(i.Name, j.Name)
-	})
 
 	return Error{
-		id:           id,
-		grpcCode:     grpcCode,
-		httpCode:     httpCode,
-		description:  description,
-		translations: newTranslationsMap,
-		fields:       fieldsArr,
+		code:            code,
+		grpcCode:        grpcCode,
+		httpCode:        httpCode,
+		description:     description,
+		title:           title,
+		publicMessage:   publicMessage,
+		internalMessage: internalMessage,
+		localization:    localization,
+		arguments:       arguments,
 	}, nil
 }
