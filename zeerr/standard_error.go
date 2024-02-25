@@ -1,4 +1,4 @@
-package core
+package zeerr
 
 import (
 	"bytes"
@@ -10,12 +10,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-type LocaleCtxKeyType struct{}
-
-type Arguments map[string]interface{}
-
-// Error represents standardized error.
-type Error struct {
+// standardError represents standardized error.
+type standardError struct {
 	code      string
 	domain    string
 	namespace string
@@ -28,10 +24,10 @@ type Error struct {
 	internalMsg string
 	publicMsg   string
 
-	causes []*Error
+	causes []Error
 }
 
-func NewLocalizedError(
+func NewError(
 	ctx context.Context,
 	localizer Localizer,
 	code string,
@@ -41,7 +37,7 @@ func NewLocalizedError(
 	grpcCode codes.Code,
 	internalMsgTmpl *template.Template,
 	args Arguments,
-) *Error {
+) Error {
 	lang, ok := ctx.Value(LocaleCtxKeyType{}).(language.Tag)
 	if !ok {
 		lang = language.Und
@@ -51,11 +47,10 @@ func NewLocalizedError(
 
 	publicMsg := localizer.LocalizePublicMessage(uid, lang, args)
 
-	// tmpl, _ := template.New("").Parse(internalMsgTmpl)
 	internalMsgBuf := bytes.NewBuffer(nil)
 	_ = internalMsgTmpl.Execute(internalMsgBuf, args)
 
-	return &Error{
+	return &standardError{
 		code:        code,
 		domain:      domain,
 		namespace:   namespace,
@@ -73,72 +68,49 @@ func makeErrorUID(domain, namespace, code string) string {
 	return path.Join(domain, namespace, code)
 }
 
-func NewError(
-	code string,
-	domain string,
-	namespace string,
-	httpCode int,
-	grpcCode codes.Code,
-	publicMsg string,
-	internalMsg string,
-	args Arguments,
-) *Error {
-	return &Error{
-		code:        code,
-		domain:      domain,
-		namespace:   namespace,
-		httpCode:    httpCode,
-		grpcCode:    grpcCode,
-		args:        args,
-		internalMsg: internalMsg,
-		publicMsg:   publicMsg,
-		causes:      nil,
-	}
-}
-
-func (e Error) UID() string {
+func (e standardError) UID() string {
 	return e.uid
 }
 
-func (e Error) Domain() string {
+func (e standardError) Domain() string {
 	return e.domain
 }
 
-func (e Error) Namespace() string {
+func (e standardError) Namespace() string {
 	return e.namespace
 }
 
-func (e Error) Code() string {
+func (e standardError) Code() string {
 	return e.code
 }
 
 // GRPCCode returns a gRPC code.
-func (e Error) GRPCCode() codes.Code {
+func (e standardError) GRPCCode() codes.Code {
 	return e.grpcCode
 }
 
 // HTTPCode returns an HTTP code.
-func (e Error) HTTPCode() int {
+func (e standardError) HTTPCode() int {
 	return e.httpCode
 }
 
-func (e *Error) InternalMsg() string {
+func (e standardError) InternalMsg() string {
 	return e.internalMsg
 }
 
-func (e *Error) PublicMsg() string {
+func (e standardError) PublicMsg() string {
 	return e.publicMsg
 }
 
-func (e *Error) Args() Arguments {
+func (e standardError) Args() Arguments {
 	return e.args
 }
 
-func (e *Error) Causes() []*Error {
+func (e standardError) Causes() []Error {
 	return e.causes
 }
 
-func (e *Error) WithCauses(causes ...*Error) *Error {
+func (e *standardError) WithCauses(causes ...Error) Error {
 	for _, c := range causes {
 		if c != nil {
 			e.causes = append(e.causes, c)
@@ -148,14 +120,14 @@ func (e *Error) WithCauses(causes ...*Error) *Error {
 	return e
 }
 
-// Error implements error interface.
+// standardError implements error interface.
 // NOTE: it returns the internal message and all the causes.
 // It's not recommended to return the value to the client.
-func (e *Error) Error() string {
+func (e *standardError) Error() string {
 	return e.formattedErr()
 }
 
-func (e *Error) formattedErr() string {
+func (e *standardError) formattedErr() string {
 	buf := bytes.NewBuffer([]byte(e.internalMsg))
 
 	for _, cause := range e.causes {

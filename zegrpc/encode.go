@@ -1,33 +1,36 @@
-package encode
+package zegrpc
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/amanbolat/zederr/pkg/core"
-	pbzederrv1 "github.com/amanbolat/zederr/pkg/proto/v1"
+	"github.com/amanbolat/zederr/zeerr"
+	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func Encode(zedErr core.Error) (*status.Status, error) {
-	pbErr, err := encode(zedErr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode zed error: %w", err)
+func Encode(err error) *status.Status {
+	var zedErr zeerr.Error
+	if !errors.As(err, &zedErr) {
+		return status.New(13, "unknown error")
 	}
+
+	pbErr := encode(zedErr)
 
 	sts := status.New(zedErr.GRPCCode(), zedErr.UID())
 	sts, err = sts.WithDetails(pbErr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach details to status: %w", err)
+		panic(fmt.Errorf("failed to attach details to status: %w", err))
 	}
 
-	return sts, nil
+	return sts
 }
 
-func encode(zedErr core.Error) (*pbzederrv1.Error, error) {
+func encode(zedErr zeerr.Error) *pbzederrv1.Error {
 	pbArgs, err := structpb.NewStruct(zedErr.Args())
-	if zedErr != nil {
-		return nil, fmt.Errorf("failed to convert args to structpb: %w", err)
+	if err != nil {
+		panic(fmt.Errorf("failed to convert args to structpb: %w", err))
 	}
 
 	pbErr := &pbzederrv1.Error{
@@ -44,19 +47,16 @@ func encode(zedErr core.Error) (*pbzederrv1.Error, error) {
 	}
 
 	if len(zedErr.Causes()) == 0 {
-		return pbErr, nil
+		return pbErr
 	}
 
 	causes := make([]*pbzederrv1.Error, 0, len(zedErr.Causes()))
 	for _, cause := range zedErr.Causes() {
-		enc, err := encode(cause)
-		if err != nil {
-			return nil, fmt.Errorf("failed to encode cause: %w", err)
-		}
-		causes = append(causes, enc)
+		encodedCause := encode(cause)
+		causes = append(causes, encodedCause)
 	}
 
 	pbErr.Causes = causes
 
-	return pbErr, nil
+	return pbErr
 }

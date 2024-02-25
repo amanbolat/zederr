@@ -1,10 +1,9 @@
-package middleware
+package zegrpc
 
 import (
 	"context"
 
-	"github.com/amanbolat/zederr/pkg/grpc/encode"
-	pbzederrv1 "github.com/amanbolat/zederr/pkg/proto/v1"
+	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
@@ -23,8 +22,8 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 
 		for _, detail := range sts.Details() {
 			if v, ok := detail.(*pbzederrv1.Error); ok {
-				zedErr, err := encode.Decode(v)
-				if err == nil {
+				zedErr, decodeErr := Decode(v)
+				if decodeErr == nil {
 					return cltStream, zedErr
 				}
 			}
@@ -48,7 +47,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 
 		for _, detail := range sts.Details() {
 			if v, ok := detail.(*pbzederrv1.Error); ok {
-				zedErr, err := encode.Decode(v)
+				zedErr, err := Decode(v)
 				if err == nil {
 					return zedErr
 				}
