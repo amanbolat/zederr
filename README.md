@@ -24,22 +24,46 @@
 5. Setup middlewares to handle errors between services.
 
 ```yaml
-common.file_too_large:
-  http_code: 400
-  grpc_code: 3
-  description: If the file received by server is larger than applied limit this error should be returned
-  translations:
-    en: "File is too large, max size is {{ .MaxSize | int }}"
-    zh_cn: "上传的文件不能大于{{ .MaxSize | int }}"
+spec_version: "1"
+domain: acme.com
+namespace: auth
+default_locale: en
 
-auth.unauthorized:
-  http_code: 404
-  grpc_code: 1
-  description: User is not authorized to perform this action
-  translations:
-    en: "Please login to perform this action"
-    zh_cn: "请登录再进行操作"
-
+errors:
+  account_locked:
+    description: Account is locked due to too many failed login attempts.
+    deprecated: ""
+    http_code: 401
+    grpc_code: 1
+    arguments:
+      user_id:
+        type: "string"
+        description: "User ID"
+        is_internal: "true"
+      failed_attempts:
+        type: "int"
+        description: "Number of failed login attempts"
+      unlock_time:
+        type: "timestamp"
+        description: "Time when the account will be unlocked"
+    title: "Account is locked"
+    internal_message: "User with id {{ .user_id }} failed to provide correct credentials {{ .failed_attempts }} times. The account is locked until {{ .unlock_time }}."
+    public_message: "Your account is locked due to too many failed login attempts ({{ .failed_attempts }})."
+    localization:
+      arguments:
+        user_id:
+          description:
+            zh: "用户ID"
+      description:
+        zh: "由于登录尝试失败次数过多，帐户已被锁定。"
+      title:
+        zh: "帐户已锁定"
+      internal_message:
+        zh: "用户ID为{{ .user_id }}的用户提供了错误的凭据{{ .failed_attempts }}次。帐户将被锁定直到{{ .unlock_time }}。"
+      public_message:
+        zh: "由于登录尝试失败次数过多，您的帐户已被锁定({{ .failed_attempts }})。"
+      deprecated:
+        zh: ""
 ```
 
 ### Constraints
