@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/iancoleman/strcase"
 	"golang.org/x/text/language"
 )
 
@@ -19,51 +18,6 @@ type Localization struct {
 	deprecated      map[language.Tag]string
 }
 
-func (l Localization) Description() map[language.Tag]string {
-	m := map[language.Tag]string{}
-	maps.Copy(l.description, m)
-
-	return m
-}
-
-func (l Localization) Title() map[language.Tag]string {
-	m := map[language.Tag]string{}
-	maps.Copy(l.title, m)
-
-	return m
-}
-
-func (l Localization) Arguments() map[string]map[language.Tag]string {
-	m := map[string]map[language.Tag]string{}
-	for argName, translations := range l.arguments {
-		m[argName] = map[language.Tag]string{}
-		maps.Copy(translations, m[argName])
-	}
-
-	return m
-}
-
-func (l Localization) PublicMessage() map[language.Tag]string {
-	m := map[language.Tag]string{}
-	maps.Copy(l.publicMessage, m)
-
-	return m
-}
-
-func (l Localization) InternalMessage() map[language.Tag]string {
-	m := map[language.Tag]string{}
-	maps.Copy(l.internalMessage, m)
-
-	return m
-}
-
-func (l Localization) Deprecated() map[language.Tag]string {
-	m := map[language.Tag]string{}
-	maps.Copy(l.deprecated, m)
-
-	return m
-}
-
 func NewLocalization() Localization {
 	return Localization{
 		description:     map[language.Tag]string{},
@@ -73,6 +27,85 @@ func NewLocalization() Localization {
 		internalMessage: map[language.Tag]string{},
 		deprecated:      map[language.Tag]string{},
 	}
+}
+
+func (l Localization) AllLanguages() []language.Tag {
+	arrSize := len(l.description) + len(l.title) + len(l.publicMessage) + len(l.internalMessage) + len(l.deprecated)
+	for _, translations := range l.arguments {
+		arrSize += len(translations)
+	}
+
+	tags := make([]language.Tag, 0, arrSize)
+
+	for tag := range l.description {
+		tags = append(tags, tag)
+	}
+	for tag := range l.title {
+		tags = append(tags, tag)
+	}
+	for tag := range l.publicMessage {
+		tags = append(tags, tag)
+	}
+	for tag := range l.internalMessage {
+		tags = append(tags, tag)
+	}
+	for tag := range l.deprecated {
+		tags = append(tags, tag)
+	}
+
+	for _, translations := range l.arguments {
+		for tag := range translations {
+			tags = append(tags, tag)
+		}
+	}
+
+	return tags
+
+}
+
+func (l Localization) Description() map[language.Tag]string {
+	m := map[language.Tag]string{}
+	maps.Copy(m, l.description)
+
+	return m
+}
+
+func (l Localization) Title() map[language.Tag]string {
+	m := map[language.Tag]string{}
+	maps.Copy(m, l.title)
+
+	return m
+}
+
+func (l Localization) Arguments() map[string]map[language.Tag]string {
+	m := map[string]map[language.Tag]string{}
+	for argName, translations := range l.arguments {
+		m[argName] = map[language.Tag]string{}
+		maps.Copy(m[argName], translations)
+	}
+
+	return m
+}
+
+func (l Localization) PublicMessage() map[language.Tag]string {
+	m := map[language.Tag]string{}
+	maps.Copy(m, l.publicMessage)
+
+	return m
+}
+
+func (l Localization) InternalMessage() map[language.Tag]string {
+	m := map[language.Tag]string{}
+	maps.Copy(m, l.internalMessage)
+
+	return m
+}
+
+func (l Localization) Deprecated() map[language.Tag]string {
+	m := map[language.Tag]string{}
+	maps.Copy(m, l.deprecated)
+
+	return m
 }
 
 func (l *Localization) AddDescriptionTranslation(lang string, val string) error {
@@ -105,10 +138,10 @@ func (l *Localization) AddTitleTranslation(lang string, val string) error {
 	return nil
 }
 
-func (l *Localization) AddArgumentTranslation(name, lang, val string) error {
+func (l *Localization) AddArgumentTranslation(name, description, lang string) error {
 	tag, err := language.Parse(lang)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse language (%s) tag; %w", lang, err)
 	}
 
 	name = strings.TrimSpace(name)
@@ -117,17 +150,15 @@ func (l *Localization) AddArgumentTranslation(name, lang, val string) error {
 		return fmt.Errorf("argument name is empty")
 	}
 
-	if !utf8.ValidString(val) {
-		return fmt.Errorf("argument value is not a valid UTF-8 string; got %s", val)
+	if !utf8.ValidString(description) {
+		return fmt.Errorf("argument description is not a valid UTF-8 string; got %s", description)
 	}
-
-	name = strcase.ToLowerCamel(name)
 
 	if _, ok := l.arguments[name]; !ok {
 		l.arguments[name] = map[language.Tag]string{}
 	}
 
-	l.arguments[name][tag] = val
+	l.arguments[name][tag] = description
 
 	return nil
 }

@@ -24,18 +24,21 @@ const (
 	ArgumentTypeFloat
 	// ArgumentTypeBool is a ArgumentType of type Bool.
 	ArgumentTypeBool
+	// ArgumentTypeTimestamp is a ArgumentType of type Timestamp.
+	ArgumentTypeTimestamp
 )
 
 var ErrInvalidArgumentType = errors.New("not a valid ArgumentType")
 
-const _ArgumentTypeName = "unknownstringintfloatbool"
+const _ArgumentTypeName = "unknownstringintfloatbooltimestamp"
 
 var _ArgumentTypeMap = map[ArgumentType]string{
-	ArgumentTypeUnknown: _ArgumentTypeName[0:7],
-	ArgumentTypeString:  _ArgumentTypeName[7:13],
-	ArgumentTypeInt:     _ArgumentTypeName[13:16],
-	ArgumentTypeFloat:   _ArgumentTypeName[16:21],
-	ArgumentTypeBool:    _ArgumentTypeName[21:25],
+	ArgumentTypeUnknown:   _ArgumentTypeName[0:7],
+	ArgumentTypeString:    _ArgumentTypeName[7:13],
+	ArgumentTypeInt:       _ArgumentTypeName[13:16],
+	ArgumentTypeFloat:     _ArgumentTypeName[16:21],
+	ArgumentTypeBool:      _ArgumentTypeName[21:25],
+	ArgumentTypeTimestamp: _ArgumentTypeName[25:34],
 }
 
 // String implements the Stringer interface.
@@ -57,6 +60,8 @@ var _ArgumentTypeValue = map[string]ArgumentType{
 	strings.ToLower(_ArgumentTypeName[16:21]): ArgumentTypeFloat,
 	_ArgumentTypeName[21:25]:                  ArgumentTypeBool,
 	strings.ToLower(_ArgumentTypeName[21:25]): ArgumentTypeBool,
+	_ArgumentTypeName[25:34]:                  ArgumentTypeTimestamp,
+	strings.ToLower(_ArgumentTypeName[25:34]): ArgumentTypeTimestamp,
 }
 
 // ParseArgumentType attempts to convert a string to a ArgumentType.

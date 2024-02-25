@@ -13,8 +13,9 @@ import (
 	_ "embed"
 
 	"github.com/BurntSushi/toml"
-	"github.com/amanbolat/zederr/pkg/codegen/core"
+	"github.com/amanbolat/zederr/internal/codegen/core"
 	"github.com/iancoleman/strcase"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -63,14 +64,15 @@ var goErrorsTemplate string
 var goErrorLocalesEmbed string
 
 type goErrorsTemplateData struct {
-	PackageName string
-	Imports     []string
-	Errors      []core.Error
+	PackageName   string
+	DefaultLocale string
+	Imports       []string
+	Errors        []core.Error
 }
 
 type localeTemplateData struct {
 	FileName string
-	Lang     string
+	Lang     language.Tag
 }
 
 type goErrorLocalesTemplateData struct {
@@ -82,8 +84,8 @@ type goErrorLocalesTemplateData struct {
 //
 // Example toml representation:
 //
-//	["error.auth.unauthorized"] <-- provided by map key
-//	other = "请登录再进行操作" <-- localeEntry
+//	["acme.com/auth/unauthorized"] <-- provided by map key
+//	other = "Please sign in" <-- localeEntry
 type localeEntry struct {
 	Other string `toml:"other"`
 }
@@ -94,7 +96,7 @@ func NewGoExporter() *GoExporter {
 	return &GoExporter{}
 }
 
-func (e *GoExporter) Export(cfg core.GoExporterConfig, errors []core.Error) error {
+func (e *GoExporter) Export(cfg core.GoExporterConfig, spec core.Spec) error {
 	if cfg.OutputPath != "" {
 		err := os.MkdirAll(cfg.OutputPath, 0755)
 		if err != nil {
@@ -102,17 +104,17 @@ func (e *GoExporter) Export(cfg core.GoExporterConfig, errors []core.Error) erro
 		}
 	}
 
-	err := e.renderErrors(cfg, errors)
+	err := e.renderErrors(cfg, spec)
 	if err != nil {
 		return fmt.Errorf("failed to render errors: %w", err)
 	}
 
-	err = e.renderLocalesEmbed(cfg, errors)
+	err = e.renderLocalesEmbed(cfg, spec)
 	if err != nil {
 		return fmt.Errorf("failed to render locales embed: %w", err)
 	}
 
-	err = e.renderLocales(cfg, errors)
+	err = e.renderLocales(cfg, spec)
 	if err != nil {
 		return fmt.Errorf("failed to render locales: %w", err)
 	}
@@ -120,11 +122,11 @@ func (e *GoExporter) Export(cfg core.GoExporterConfig, errors []core.Error) erro
 	return nil
 }
 
-func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, errors []core.Error) error {
-	locales := make(map[string]struct{})
+func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, spec core.Spec) error {
+	locales := make(map[language.Tag]struct{})
 
-	for _, coreErr := range errors {
-		for locale := range coreErr.Translations() {
+	for _, coreErr := range spec.Errors {
+		for _, locale := range coreErr.Translations().AllLanguages() {
 			locales[locale] = struct{}{}
 		}
 	}
@@ -182,7 +184,7 @@ func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, errors []core
 	return nil
 }
 
-func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, errors []core.Error) error {
+func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, spec core.Spec) error {
 	tmpl := template.New("")
 	tmpl.Funcs(template.FuncMap{
 		"errorConstructorParams": errorConstructorParams,
@@ -193,18 +195,22 @@ func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, errors []core.Error
 
 	_, err := tmpl.Parse(goErrorsTemplate)
 	if err != nil {
-		return fmt.Errorf("GoExporter: failed to parse template: %w", err)
+		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, goErrorsTemplateData{
-		PackageName: cfg.PackageName,
+		PackageName:   cfg.PackageName,
+		DefaultLocale: spec.DefaultLocale.String(),
 		Imports: []string{
-			`pkgzederr "github.com/amanbolat/zederr/pkg/zederr"`,
+			`context "context"`,
+			`template "html/template"`,
+			`zeerr "github.com/amanbolat/zederr/zeerr"`,
+			`zei18n "github.com/amanbolat/zederr/zei18n"`,
 			`pkgcodes "google.golang.org/grpc/codes"`,
-			`pkgstructpb "google.golang.org/protobuf/types/known/structpb"`,
+			`time "time"`,
 		},
-		Errors: errors,
+		Errors: spec.Errors,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)
@@ -236,18 +242,58 @@ func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, errors []core.Error
 	return nil
 }
 
-func (e *GoExporter) renderLocales(cfg core.GoExporterConfig, errors []core.Error) error {
-	errMaps := map[string]map[string]localeEntry{}
-	for _, coreErr := range errors {
-		for lang, translation := range coreErr.Translations() {
-			if _, ok := errMaps[lang]; !ok {
-				errMaps[lang] = make(map[string]localeEntry)
+func (e *GoExporter) renderLocales(cfg core.GoExporterConfig, spec core.Spec) error {
+	entryMap := map[language.Tag]map[string]localeEntry{}
+
+	for _, coreErr := range spec.Errors {
+		for _, lang := range coreErr.Translations().AllLanguages() {
+			if _, ok := entryMap[lang]; !ok {
+				entryMap[lang] = make(map[string]localeEntry)
 			}
-			errMaps[lang][coreErr.ID()] = localeEntry{Other: translation}
 		}
 	}
 
-	for lang, v := range errMaps {
+	for _, coreErr := range spec.Errors {
+		for lang, translation := range coreErr.Translations().PublicMessage() {
+			entryMap[lang][coreErr.UID()+"_public_msg"] = localeEntry{
+				Other: translation,
+			}
+		}
+
+		for lang, translation := range coreErr.Translations().InternalMessage() {
+			entryMap[lang][coreErr.UID()+"_internal_msg"] = localeEntry{
+				Other: translation,
+			}
+		}
+
+		for argName, translations := range coreErr.Translations().Arguments() {
+			for lang, translation := range translations {
+				entryMap[lang][coreErr.UID()+"_argument_"+argName] = localeEntry{
+					Other: translation,
+				}
+			}
+		}
+
+		for lang, translation := range coreErr.Translations().Deprecated() {
+			entryMap[lang][coreErr.UID()+"_deprecated"] = localeEntry{
+				Other: translation,
+			}
+		}
+
+		for lang, translation := range coreErr.Translations().Description() {
+			entryMap[lang][coreErr.UID()+"_description"] = localeEntry{
+				Other: translation,
+			}
+		}
+
+		for lang, translation := range coreErr.Translations().Title() {
+			entryMap[lang][coreErr.UID()+"_title"] = localeEntry{
+				Other: translation,
+			}
+		}
+	}
+
+	for lang, v := range entryMap {
 		var buf bytes.Buffer
 		enc := toml.NewEncoder(&buf)
 		enc.Indent = ""
@@ -278,10 +324,10 @@ func (e *GoExporter) renderLocales(cfg core.GoExporterConfig, errors []core.Erro
 
 func errorConstructorParams(e core.Error) string {
 	var res string
-	for i, field := range e.Fields() {
-		name := toParamName(field.Name)
-		res += name + " " + field.Type
-		if i != len(e.Fields())-1 {
+	for i, field := range e.Arguments() {
+		name := toParamName(field.Name())
+		res += name + " " + typeFromArgumentType(field.Typ())
+		if i != len(e.Arguments())-1 {
 			res += ", "
 		}
 	}
@@ -289,12 +335,27 @@ func errorConstructorParams(e core.Error) string {
 	return res
 }
 
-func toParamName(name string) string {
-	name = strcase.ToSnake(name)
+func typeFromArgumentType(argTyp core.ArgumentType) string {
+	switch argTyp {
+	case core.ArgumentTypeString:
+		return "string"
+	case core.ArgumentTypeInt:
+		return "int"
+	case core.ArgumentTypeFloat:
+		return "float"
+	case core.ArgumentTypeBool:
+		return "bool"
+	case core.ArgumentTypeTimestamp:
+		return "time.Time"
+	default:
+		panic("unknown argument type")
+	}
+}
 
+func toParamName(name string) string {
 	_, ok := keywords[name]
 	if ok {
-		return "param" + strcase.ToCamel(name)
+		return "arg" + strcase.ToCamel(name)
 	}
 
 	return name

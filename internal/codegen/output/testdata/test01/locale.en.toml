@@ -1,2 +1,2 @@
-["core.error"]
+["core/core/core_error_public"]
 other = "core error {{.Error}}"

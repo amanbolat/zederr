@@ -5,12 +5,12 @@ import (
 )
 
 type Importer interface {
-	Import(reader io.Reader) ([]Error, error)
+	Import(reader io.Reader) (Spec, error)
 }
 
 // GoExporter is responsible for exporting the parsed errors to Go code.
 type GoExporter interface {
-	Export(cfg GoExporterConfig, errors []Error) error
+	Export(cfg GoExporterConfig, spec Spec) error
 }
 
 type Manager struct {
@@ -26,12 +26,12 @@ func NewManager(importer Importer, goExporter GoExporter) *Manager {
 }
 
 func (m *Manager) Generate(cfg Config) error {
-	zedErrors, err := m.importer.Import(cfg.Source)
+	spec, err := m.importer.Import(cfg.Source)
 	if err != nil {
 		return err
 	}
 
-	err = m.goExporter.Export(cfg.GoExporterConfig, zedErrors)
+	err = m.goExporter.Export(cfg.GoExporterConfig, spec)
 	if err != nil {
 		return err
 	}

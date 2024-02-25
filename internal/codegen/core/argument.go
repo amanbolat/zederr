@@ -5,8 +5,6 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/iancoleman/strcase"
 )
 
 var (
@@ -20,18 +18,6 @@ type Argument struct {
 	typ         ArgumentType
 }
 
-func (a Argument) Name() string {
-	return a.name
-}
-
-func (a Argument) Description() string {
-	return a.description
-}
-
-func (a Argument) Typ() ArgumentType {
-	return a.typ
-}
-
 func NewArgument(name, description, typ string) (Argument, error) {
 	name = strings.TrimSpace(name)
 
@@ -42,8 +28,6 @@ func NewArgument(name, description, typ string) (Argument, error) {
 	if !utf8.ValidString(name) {
 		return Argument{}, fmt.Errorf("argument name is not a valid UTF-8 string; got %s", name)
 	}
-
-	name = strcase.ToLowerCamel(name)
 
 	if !argumentNameRegex.MatchString(name) {
 		return Argument{}, fmt.Errorf("argument name is not a valid identifier; it should match regex pattern: %s; got %s", argumentNameRegex, name)
@@ -69,4 +53,16 @@ func NewArgument(name, description, typ string) (Argument, error) {
 		description: description,
 		typ:         argTyp,
 	}, nil
+}
+
+func (a Argument) Name() string {
+	return a.name
+}
+
+func (a Argument) Description() string {
+	return a.description
+}
+
+func (a Argument) Typ() ArgumentType {
+	return a.typ
 }

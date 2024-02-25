@@ -8,6 +8,7 @@ string
 int
 float
 bool
+timestamp
 )
 */
 type ArgumentType int8

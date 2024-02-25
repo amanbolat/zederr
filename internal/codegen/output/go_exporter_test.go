@@ -6,28 +6,39 @@ import (
 	"os"
 	"testing"
 
-	"github.com/amanbolat/zederr/pkg/codegen/core"
-	"github.com/amanbolat/zederr/pkg/codegen/output"
-	"github.com/amanbolat/zederr/pkg/codegen/parser"
+	"github.com/amanbolat/zederr/internal/codegen/core"
+	"github.com/amanbolat/zederr/internal/codegen/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/language"
+	"google.golang.org/grpc/codes"
 )
 
 func TestGoExporter(t *testing.T) {
 	e := output.GoExporter{}
 
-	p := parser.NewParser("{{", "}}", nil)
-	b := core.NewErrorBuilder(p)
+	b, err := core.NewErrorBuilder("1", "acme.com", "ns", "en")
+	require.NoError(t, err)
+
+	localization := core.NewLocalization()
+
+	arg1, err := core.NewArgument("arg_1", "description", "string")
+	require.NoError(t, err)
 
 	zedErr, err := b.NewError(
-		"core.error",
-		2,
+		"code",
+		codes.Canceled,
 		400,
-		"core error",
-		map[string]string{
-			"en": "core error {{ .Error | string }}",
-			"ru": "ошибка ядра {{ string .User }}",
-		})
+		"description",
+		"title",
+		"public message {{ .arg_1 }}",
+		"internal message {{ .arg_1 }}",
+		"",
+		[]core.Argument{
+			arg1,
+		},
+		localization,
+	)
 	require.NoError(t, err)
 	zedErrs := []core.Error{
 		zedErr,
@@ -51,7 +62,15 @@ func TestGoExporter(t *testing.T) {
 		Output:      buf,
 		OutputPath:  "",
 	}
-	err = e.Export(cfg, zedErrs)
+	spec := core.Spec{
+		Version:       "1",
+		Domain:        "acme.com",
+		Namespace:     "namespace",
+		DefaultLocale: language.English,
+		Errors:        zedErrs,
+	}
+
+	err = e.Export(cfg, spec)
 	require.NoError(t, err)
 
 	fmt.Println(buf.String())
