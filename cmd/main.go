@@ -4,22 +4,21 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/amanbolat/zederr/pkg/codegen/core"
-	"github.com/amanbolat/zederr/pkg/codegen/input"
-	"github.com/amanbolat/zederr/pkg/codegen/output"
-	"github.com/amanbolat/zederr/pkg/codegen/parser"
+	"github.com/amanbolat/zederr/cmd/gen"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
-	p := parser.NewParser("{{", "}}", nil)
-	errBuilder := core.NewErrorBuilder(p)
-	yamlImporter := input.NewYAMLImporter(errBuilder)
-	goExporter := output.NewGoExporter()
-	manager := core.NewManager(yamlImporter, goExporter)
+	app := cli.NewApp()
+	app.Name = "zederr"
+	app.Usage = "A tool to work with standardized errors."
+	app.Commands = []*cli.Command{
+		&gen.CmdGen,
+	}
 
-	err := manager.Generate(core.Config{})
+	err := app.Run(os.Args)
 	if err != nil {
-		slog.Error("failed to generate", slog.Any("error", err))
+		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }
