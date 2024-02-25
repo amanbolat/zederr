@@ -1,2 +1,0 @@
-["core.error"]
-other = "ошибка ядра {{string .User}}"
