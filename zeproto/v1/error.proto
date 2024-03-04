@@ -4,7 +4,7 @@ package zederr.v1;
 
 import "google/protobuf/struct.proto";
 
-option go_package = "github.com/amanbolat/zederr/pkg/proto/v1;pbzederrv1";
+option go_package = "github.com/amanbolat/zederr/zeproto/v1;pbzederrv1";
 
 message Error {
   string uid = 1;
