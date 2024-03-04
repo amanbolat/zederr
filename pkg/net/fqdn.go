@@ -23,5 +23,6 @@ func FQDN(s string) bool {
 		}
 	}
 	_, err := idnaProfile.ToASCII(s)
+
 	return err == nil
 }
