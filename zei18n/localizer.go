@@ -14,6 +14,8 @@ type localizer struct {
 	defaultLang language.Tag
 }
 
+// NewLocalizer creates a new localizer.
+// NOTE: it's meant to be used only by the generated code.
 func NewLocalizer(defaultLocale string, messagesMap map[string][]byte) (zeerr.Localizer, error) {
 	defaultLocaleTag, err := language.Parse(defaultLocale)
 	if err != nil {
@@ -51,6 +53,7 @@ func NewLocalizer(defaultLocale string, messagesMap map[string][]byte) (zeerr.Lo
 	return &l, nil
 }
 
+// LocalizePublicMessage localizes error's public message.
 func (l *localizer) LocalizePublicMessage(errUID string, lang language.Tag, args zeerr.Arguments) string {
 	loc, ok := l.localizers[lang]
 	if !ok {
@@ -66,21 +69,4 @@ func (l *localizer) LocalizePublicMessage(errUID string, lang language.Tag, args
 	}
 
 	return msg
-}
-
-func (l *localizer) LocalizeError(e zeerr.Error, lang language.Tag) (string, bool, error) {
-	loc, ok := l.localizers[lang]
-	if !ok {
-		loc = l.localizers[l.defaultLang]
-	}
-
-	msg, err := loc.Localize(&i18n.LocalizeConfig{
-		MessageID:    e.UID(),
-		TemplateData: e.Args(),
-	})
-	if err != nil {
-		return "", false, fmt.Errorf("failed to localize error [%s]: %w", e.UID(), err)
-	}
-
-	return msg, ok, nil
 }
