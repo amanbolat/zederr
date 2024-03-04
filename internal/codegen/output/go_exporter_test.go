@@ -57,7 +57,7 @@ func TestGoExporter(t *testing.T) {
 	require.NoError(t, err)
 
 	buf := bytes.NewBuffer(nil)
-	cfg := core.GoExporterConfig{
+	cfg := core.ExportGo{
 		PackageName: "zederrtest",
 		Output:      buf,
 		OutputPath:  "",

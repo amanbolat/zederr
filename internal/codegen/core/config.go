@@ -1,17 +1,11 @@
 package core
 
-import (
-	"io"
-)
-
 type Config struct {
-	Source io.Reader
-
-	GoExporterConfig GoExporterConfig
+	SpecPath string
+	ExportGo ExportGo
 }
 
-type GoExporterConfig struct {
+type ExportGo struct {
 	PackageName string
-	Output      io.Writer
 	OutputPath  string
 }

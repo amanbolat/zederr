@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -96,15 +95,17 @@ func NewGoExporter() *GoExporter {
 	return &GoExporter{}
 }
 
-func (e *GoExporter) Export(cfg core.GoExporterConfig, spec core.Spec) error {
-	if cfg.OutputPath != "" {
-		err := os.MkdirAll(cfg.OutputPath, 0755)
-		if err != nil {
-			return fmt.Errorf("GoExporter: failed to create output directory: %w", err)
-		}
+func (e *GoExporter) Export(cfg core.ExportGo, spec core.Spec) error {
+	if cfg.OutputPath == "" {
+		return fmt.Errorf("output path is empty")
 	}
 
-	err := e.renderErrors(cfg, spec)
+	err := os.MkdirAll(cfg.OutputPath, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	err = e.renderErrors(cfg, spec)
 	if err != nil {
 		return fmt.Errorf("failed to render errors: %w", err)
 	}
@@ -122,7 +123,7 @@ func (e *GoExporter) Export(cfg core.GoExporterConfig, spec core.Spec) error {
 	return nil
 }
 
-func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, spec core.Spec) error {
+func (e *GoExporter) renderLocalesEmbed(cfg core.ExportGo, spec core.Spec) error {
 	locales := make(map[language.Tag]struct{})
 
 	for _, coreErr := range spec.Errors {
@@ -163,28 +164,17 @@ func (e *GoExporter) renderLocalesEmbed(cfg core.GoExporterConfig, spec core.Spe
 		return fmt.Errorf("failed to format generated go code: %w", err)
 	}
 
-	outputBuf := bytes.NewReader(formattedSource)
+	fileName := filepath.Join(cfg.OutputPath, "error_locales_embed.go")
 
-	if cfg.Output != nil {
-		_, err = io.Copy(cfg.Output, outputBuf)
-		if err != nil {
-			return fmt.Errorf("failed to write to output: %w", err)
-		}
-	}
-
-	if cfg.OutputPath != "" {
-		fileName := filepath.Join(cfg.OutputPath, "error_locales_embed.go")
-
-		err = os.WriteFile(fileName, formattedSource, 0666)
-		if err != nil {
-			return err
-		}
+	err = os.WriteFile(fileName, formattedSource, 0666)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, spec core.Spec) error {
+func (e *GoExporter) renderErrors(cfg core.ExportGo, spec core.Spec) error {
 	tmpl := template.New("")
 	tmpl.Funcs(template.FuncMap{
 		"errorConstructorParams": errorConstructorParams,
@@ -221,28 +211,17 @@ func (e *GoExporter) renderErrors(cfg core.GoExporterConfig, spec core.Spec) err
 		return fmt.Errorf("failed to format generated go code: %w", err)
 	}
 
-	outputBuf := bytes.NewReader(formattedSource)
+	fileName := filepath.Join(cfg.OutputPath, "errors.go")
 
-	if cfg.Output != nil {
-		_, err = io.Copy(cfg.Output, outputBuf)
-		if err != nil {
-			return fmt.Errorf("failed to write to output: %w", err)
-		}
-	}
-
-	if cfg.OutputPath != "" {
-		fileName := filepath.Join(cfg.OutputPath, "errors.go")
-
-		err = os.WriteFile(fileName, formattedSource, 0666)
-		if err != nil {
-			return err
-		}
+	err = os.WriteFile(fileName, formattedSource, 0666)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (e *GoExporter) renderLocales(cfg core.GoExporterConfig, spec core.Spec) error {
+func (e *GoExporter) renderLocales(cfg core.ExportGo, spec core.Spec) error {
 	entryMap := map[language.Tag]map[string]localeEntry{}
 
 	for _, coreErr := range spec.Errors {
@@ -302,20 +281,11 @@ func (e *GoExporter) renderLocales(cfg core.GoExporterConfig, spec core.Spec) er
 			return fmt.Errorf("failed to encode toml: %w", err)
 		}
 
-		if cfg.Output != nil {
-			_, err = io.Copy(cfg.Output, &buf)
-			if err != nil {
-				return fmt.Errorf("failed to write to output: %w", err)
-			}
-		}
+		fileName := filepath.Join(cfg.OutputPath, fmt.Sprintf("locale.%s.toml", lang))
 
-		if cfg.OutputPath != "" {
-			fileName := filepath.Join(cfg.OutputPath, fmt.Sprintf("locale.%s.toml", lang))
-
-			err = os.WriteFile(fileName, buf.Bytes(), 0666)
-			if err != nil {
-				return fmt.Errorf("failed to write %s error locale messages to file: %w", lang, err)
-			}
+		err = os.WriteFile(fileName, buf.Bytes(), 0666)
+		if err != nil {
+			return fmt.Errorf("failed to write %s error locale messages to file: %w", lang, err)
 		}
 	}
 

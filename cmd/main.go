@@ -4,19 +4,17 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/amanbolat/zederr/cmd/gen"
-	"github.com/urfave/cli/v2"
+	"github.com/amanbolat/zederr/internal/codegen/command"
 )
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "zederr"
-	app.Usage = "A tool to work with standardized errors."
-	app.Commands = []*cli.Command{
-		&gen.CmdGen,
-	}
+	slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource:   false,
+		Level:       nil,
+		ReplaceAttr: nil,
+	}))
 
-	err := app.Run(os.Args)
+	err := command.NewRoot().Execute()
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)

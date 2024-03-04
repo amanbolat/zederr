@@ -1,7 +1,10 @@
 package core
 
 import (
+	"bytes"
+	"fmt"
 	"io"
+	"os"
 )
 
 type Importer interface {
@@ -10,7 +13,7 @@ type Importer interface {
 
 // GoExporter is responsible for exporting the parsed errors to Go code.
 type GoExporter interface {
-	Export(cfg GoExporterConfig, spec Spec) error
+	Export(cfg ExportGo, spec Spec) error
 }
 
 type Manager struct {
@@ -26,12 +29,17 @@ func NewManager(importer Importer, goExporter GoExporter) *Manager {
 }
 
 func (m *Manager) Generate(cfg Config) error {
-	spec, err := m.importer.Import(cfg.Source)
+	b, err := os.ReadFile(cfg.SpecPath)
+	if err != nil {
+		return fmt.Errorf("failed to read spec file: %w", err)
+	}
+
+	spec, err := m.importer.Import(bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
 
-	err = m.goExporter.Export(cfg.GoExporterConfig, spec)
+	err = m.goExporter.Export(cfg.ExportGo, spec)
 	if err != nil {
 		return err
 	}
