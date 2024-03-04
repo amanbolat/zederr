@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"html/template"
-	"path"
 
 	"golang.org/x/text/language"
 	"google.golang.org/grpc/codes"
@@ -27,6 +26,8 @@ type standardError struct {
 	causes []Error
 }
 
+// NewError creates a new error.
+// NOTE: The constructor is meant to be used only by the generated code.
 func NewError(
 	ctx context.Context,
 	localizer Localizer,
@@ -43,7 +44,7 @@ func NewError(
 		lang = language.Und
 	}
 
-	uid := makeErrorUID(domain, namespace, code)
+	uid := MakeUID(domain, namespace, code)
 
 	publicMsg := localizer.LocalizePublicMessage(uid, lang, args)
 
@@ -64,22 +65,22 @@ func NewError(
 	}
 }
 
-func makeErrorUID(domain, namespace, code string) string {
-	return path.Join(domain, namespace, code)
-}
-
+// UID returns an error UID.
 func (e standardError) UID() string {
 	return e.uid
 }
 
+// Domain returns an error domain.
 func (e standardError) Domain() string {
 	return e.domain
 }
 
+// Namespace returns an error namespace.
 func (e standardError) Namespace() string {
 	return e.namespace
 }
 
+// Code returns an error code.
 func (e standardError) Code() string {
 	return e.code
 }
@@ -94,6 +95,7 @@ func (e standardError) HTTPCode() int {
 	return e.httpCode
 }
 
+// InternalMsg returns an internal message.
 func (e standardError) InternalMsg() string {
 	return e.internalMsg
 }
@@ -102,14 +104,17 @@ func (e standardError) PublicMsg() string {
 	return e.publicMsg
 }
 
+// Args returns error's arguments.
 func (e standardError) Args() Arguments {
 	return e.args
 }
 
+// Causes returns a list of errors that caused the current error.
 func (e standardError) Causes() []Error {
 	return e.causes
 }
 
+// WithCauses is used to attach causes to the error.
 func (e *standardError) WithCauses(causes ...Error) Error {
 	for _, c := range causes {
 		if c != nil {
@@ -120,13 +125,12 @@ func (e *standardError) WithCauses(causes ...Error) Error {
 	return e
 }
 
-// standardError implements error interface.
-// NOTE: it returns the internal message and all the causes.
-// It's not recommended to return the value to the client.
+// Error implements the error interface.
 func (e *standardError) Error() string {
 	return e.formattedErr()
 }
 
+// formattedErr returns a formatted error message.
 func (e *standardError) formattedErr() string {
 	buf := bytes.NewBuffer([]byte(e.internalMsg))
 
