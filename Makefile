@@ -1,14 +1,17 @@
 export BIN := $(PWD)/.bin
-export PATH := $(BIN):$(PATH)
+export PROTOC_BIN := $(PWD)/.bin/protocd/bin
+export PATH := $(BIN):$(PROTOC_BIN):$(PATH)
+PROTOC_VER := 25.3
+PROTOC_CHECKSUM := d0fcd6d3b3ef6f22f1c47cc30a80c06727e1eccdddcaf0f4a3be47c070ffd3fe
 
 gen-proto:
 	# install protoc
+	PROTOC_VER=${PROTOC_VER} PROTOC_CHECKSUM=${PROTOC_CHECKSUM} ./scripts/install-protoc.sh
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 	protoc --proto_path=. --go_out=. --go-grpc_out=. \
 	 --go_opt=module=github.com/amanbolat/zederr \
-	 --go-grpc_opt=module=github.com/amanbolat/zederr  \
-	 pkg/proto/v1/*.proto
+	 zeproto/v1/*.proto
 
 .PHONY: bin
 bin:
