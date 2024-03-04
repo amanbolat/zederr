@@ -136,7 +136,7 @@ The result will be:
   "httpCode": "401",
   "grpcCode": "1",
   "publicMessage": "由于登录尝试失败次数过多，您的帐户已被锁定(1)。",
-  "internalMessage": "User with id user_1 failed to provide correct credentials 1 times. The account is locked until 2024-03-05 00:08:52.047377 &#43;0100 CET m=&#43;0.003455751.",
+  "internalMessage": "User with id user_1 failed to provide correct credentials 1 times. The account is locked until 2024-03-05 00:08:52.",
   "arguments": {
     "failed_attempts": 1,
     "unlock_time": "2024-03-05 00:08:52.047377 +0100 CET m=+0.003455751",

@@ -1,0 +1,17 @@
+["acme.com/auth/AccountLocked_argument_user_id"]
+other = "用户ID"
+
+["acme.com/auth/AccountLocked_deprecated"]
+other = ""
+
+["acme.com/auth/AccountLocked_description"]
+other = "由于登录尝试失败次数过多，帐户已被锁定。"
+
+["acme.com/auth/AccountLocked_internal_msg"]
+other = "用户ID为{{ .user_id }}的用户提供了错误的凭据{{ .failed_attempts }}次。帐户将被锁定直到{{ .unlock_time }}。"
+
+["acme.com/auth/AccountLocked_public_msg"]
+other = "由于登录尝试失败次数过多，您的帐户已被锁定({{ .failed_attempts }})。"
+
+["acme.com/auth/AccountLocked_title"]
+other = "帐户已锁定"
