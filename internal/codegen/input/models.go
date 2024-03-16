@@ -33,7 +33,7 @@ func (a *Arguments) UnmarshalYAML(value *yaml.Node) error {
 
 	*a = make([]Argument, len(value.Content)/2)
 	for i := 0; i < len(value.Content); i += 2 {
-		var entry = &(*a)[i/2]
+		entry := &(*a)[i/2]
 		if err := value.Content[i+1].Decode(&entry); err != nil {
 			return fmt.Errorf("failed to decode argument content: %w", err)
 		}
@@ -42,6 +42,7 @@ func (a *Arguments) UnmarshalYAML(value *yaml.Node) error {
 			return fmt.Errorf("failed to decode argument name: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -59,7 +60,7 @@ func (t *Translations) UnmarshalYAML(value *yaml.Node) error {
 
 	*t = make([]Translation, len(value.Content)/2)
 	for i := 0; i < len(value.Content); i += 2 {
-		var entry = &(*t)[i/2]
+		entry := &(*t)[i/2]
 		if err := value.Content[i+1].Decode(&entry.Value); err != nil {
 			return err
 		}
@@ -68,8 +69,8 @@ func (t *Translations) UnmarshalYAML(value *yaml.Node) error {
 			return err
 		}
 	}
-	return nil
 
+	return nil
 }
 
 type LocalizationArgument struct {
@@ -86,7 +87,7 @@ func (a *LocalizationArguments) UnmarshalYAML(value *yaml.Node) error {
 
 	*a = make([]LocalizationArgument, len(value.Content)/2)
 	for i := 0; i < len(value.Content); i += 2 {
-		var entry = &(*a)[i/2]
+		entry := &(*a)[i/2]
 		if err := value.Content[i+1].Decode(&entry); err != nil {
 			return err
 		}
@@ -134,7 +135,7 @@ func (p *ErrorEntries) UnmarshalYAML(value *yaml.Node) error {
 
 	*p = make([]ErrorEntry, len(value.Content)/2)
 	for i := 0; i < len(value.Content); i += 2 {
-		var entry = &(*p)[i/2]
+		entry := &(*p)[i/2]
 		if err := value.Content[i+1].Decode(&entry); err != nil {
 			return err
 		}
@@ -143,12 +144,15 @@ func (p *ErrorEntries) UnmarshalYAML(value *yaml.Node) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
 // AssertErrorEntriesEquality asserts that two ErrorEntries are equal.
 // Used for testing only.
 func AssertErrorEntriesEquality(t *testing.T, expected, actual ErrorEntries) {
+	t.Helper()
+
 	if assert.Len(t, actual, len(expected)) {
 		for i := range expected {
 			assert.Emptyf(t, cmp.Diff(expected[i], actual[i]), "expected and actual error entries are not equal")

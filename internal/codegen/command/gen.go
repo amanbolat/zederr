@@ -3,11 +3,12 @@ package command
 import (
 	"log/slog"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"github.com/amanbolat/zederr/internal/codegen/core"
 	"github.com/amanbolat/zederr/internal/codegen/input"
 	"github.com/amanbolat/zederr/internal/codegen/output"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func NewGen() *cobra.Command {
@@ -16,7 +17,7 @@ func NewGen() *cobra.Command {
 	genCmd := &cobra.Command{
 		Use:   "gen",
 		Short: "Generates error codes and messages.",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := generateCode(cfg); err != nil {
 				return err
 			}

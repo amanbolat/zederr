@@ -4,16 +4,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/amanbolat/zederr/zeerr"
-	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/amanbolat/zederr/zeerr"
+	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 )
 
 func Encode(err error) *status.Status {
 	var zedErr zeerr.Error
 	if !errors.As(err, &zedErr) {
-		return status.New(13, "unknown error")
+		return status.New(codes.Unknown, "unknown error")
 	}
 
 	pbErr := encode(zedErr)
@@ -51,6 +53,7 @@ func encode(zedErr zeerr.Error) *pbzederrv1.Error {
 	}
 
 	causes := make([]*pbzederrv1.Error, 0, len(zedErr.Causes()))
+
 	for _, cause := range zedErr.Causes() {
 		encodedCause := encode(cause)
 		causes = append(causes, encodedCause)

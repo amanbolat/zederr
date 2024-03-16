@@ -7,19 +7,17 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/amanbolat/zederr/pkg/net"
 	"github.com/iancoleman/strcase"
 	"golang.org/x/text/language"
 	"google.golang.org/grpc/codes"
+
+	"github.com/amanbolat/zederr/pkg/net"
 )
 
-var (
-	errorCodeRegex = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$")
-)
+var errorCodeRegex = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$")
 
 // ErrorBuilder is responsible for creating Error instances.
 type ErrorBuilder struct {
-	specVersion   string
 	domain        string
 	namespace     string
 	defaultLocale language.Tag

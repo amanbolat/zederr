@@ -1,8 +1,9 @@
 package transport
 
 import (
-	"github.com/amanbolat/zederr/zeerr"
 	"google.golang.org/grpc/codes"
+
+	"github.com/amanbolat/zederr/zeerr"
 )
 
 type transportError struct {

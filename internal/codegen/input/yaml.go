@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/amanbolat/zederr/internal/codegen/core"
 	"golang.org/x/text/language"
 	"gopkg.in/yaml.v3"
+
+	"github.com/amanbolat/zederr/internal/codegen/core"
 )
 
 type YAMLImporter struct{}
@@ -21,6 +22,7 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 	}
 
 	dec := yaml.NewDecoder(src)
+
 	var yamlSpec ErrorListSpecification
 
 	err := dec.Decode(&yamlSpec)
@@ -42,9 +44,11 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 		return core.Spec{}, fmt.Errorf("failed to create error builder: %w", err)
 	}
 
-	var zedErrors []core.Error
+	zedErrors := make([]core.Error, 0, len(yamlSpec.Errors))
+
 	for _, entry := range yamlSpec.Errors {
 		var args []core.Argument
+
 		for _, rawArg := range entry.Arguments {
 			arg, err := core.NewArgument(rawArg.Name, rawArg.Description, rawArg.Type)
 			if err != nil {
@@ -55,6 +59,7 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 		}
 
 		localization := core.NewLocalization()
+
 		if entry.Localization != nil {
 			for _, tr := range entry.Localization.Title {
 				err = localization.AddTitleTranslation(tr.Lang, tr.Value)

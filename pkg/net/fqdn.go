@@ -16,13 +16,14 @@ var idnaProfile = idna.New(
 //
 // FQDN allows only ASCII characters as prescribed by RFC 1034 (A-Z, a-z, 0-9
 // and the hyphen).
-func FQDN(s string) bool {
-	for i := 0; i < len(s); i++ {
-		if s[i] >= utf8.RuneSelf {
+func FQDN(str string) bool {
+	for i := 0; i < len(str); i++ {
+		if str[i] >= utf8.RuneSelf {
 			return false
 		}
 	}
-	_, err := idnaProfile.ToASCII(s)
+
+	_, err := idnaProfile.ToASCII(str)
 
 	return err == nil
 }

@@ -37,10 +37,10 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		opt(cfg)
 	}
 
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv interface{}, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		err := handler(srv, ss)
 		if err == nil {
-			return err
+			return nil
 		}
 
 		zedErr := cfg.errMapperFunc(err)
@@ -57,10 +57,10 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 		opt(cfg)
 	}
 
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		resp, err := handler(ctx, req)
 		if err == nil {
-			return resp, err
+			return resp, nil
 		}
 
 		zedErr := cfg.errMapperFunc(err)

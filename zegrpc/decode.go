@@ -1,10 +1,11 @@
 package zegrpc
 
 import (
+	"google.golang.org/grpc/codes"
+
 	"github.com/amanbolat/zederr/internal/transport"
 	"github.com/amanbolat/zederr/zeerr"
 	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
-	"google.golang.org/grpc/codes"
 )
 
 func Decode(pbErr *pbzederrv1.Error) (zeerr.Error, error) {

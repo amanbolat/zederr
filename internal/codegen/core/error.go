@@ -40,7 +40,7 @@ func (e Error) GrpcCode() codes.Code {
 	return e.grpcCode
 }
 
-func (e Error) HttpCode() int {
+func (e Error) HTTPCode() int {
 	return e.httpCode
 }
 

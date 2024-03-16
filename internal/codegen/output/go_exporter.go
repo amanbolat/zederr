@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"go/format"
 	"os"
@@ -9,52 +10,49 @@ import (
 	"strings"
 	"text/template"
 
-	_ "embed"
-
 	"github.com/BurntSushi/toml"
-	"github.com/amanbolat/zederr/internal/codegen/core"
 	"github.com/iancoleman/strcase"
 	"golang.org/x/text/language"
+
+	"github.com/amanbolat/zederr/internal/codegen/core"
 )
 
-var (
-	// keywords is a map of Go keywords, package names, builtins and param names that should be renamed.
-	keywords = map[string]struct{}{
-		// Go keywords.
-		"break":       {},
-		"default":     {},
-		"func":        {},
-		"interface":   {},
-		"select":      {},
-		"case":        {},
-		"defer":       {},
-		"go":          {},
-		"map":         {},
-		"struct":      {},
-		"chan":        {},
-		"else":        {},
-		"goto":        {},
-		"package":     {},
-		"switch":      {},
-		"const":       {},
-		"fallthrough": {},
-		"if":          {},
-		"range":       {},
-		"type":        {},
-		"continue":    {},
-		"for":         {},
-		"import":      {},
-		"return":      {},
-		"var":         {},
-		"error":       {},
-		// Parameter names.
-		"err": {},
-		// Package aliases.
-		"pkgzederr":   {},
-		"pkgcodes":    {},
-		"pkgstructpb": {},
-	}
-)
+// keywords is a map of Go keywords, package names, builtins and param names that should be renamed.
+var keywords = map[string]struct{}{
+	// Go keywords.
+	"break":       {},
+	"default":     {},
+	"func":        {},
+	"interface":   {},
+	"select":      {},
+	"case":        {},
+	"defer":       {},
+	"go":          {},
+	"map":         {},
+	"struct":      {},
+	"chan":        {},
+	"else":        {},
+	"goto":        {},
+	"package":     {},
+	"switch":      {},
+	"const":       {},
+	"fallthrough": {},
+	"if":          {},
+	"range":       {},
+	"type":        {},
+	"continue":    {},
+	"for":         {},
+	"import":      {},
+	"return":      {},
+	"var":         {},
+	"error":       {},
+	// Parameter names.
+	"err": {},
+	// Package aliases.
+	"pkgzederr":   {},
+	"pkgcodes":    {},
+	"pkgstructpb": {},
+}
 
 //go:embed templates/go_errors.tmpl
 var goErrorsTemplate string
@@ -100,7 +98,7 @@ func (e *GoExporter) Export(cfg core.ExportGo, spec core.Spec) error {
 		return fmt.Errorf("output path is empty")
 	}
 
-	err := os.MkdirAll(cfg.OutputPath, 0755)
+	err := os.MkdirAll(cfg.OutputPath, 0o755)
 	if err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -132,7 +130,7 @@ func (e *GoExporter) renderLocalesEmbed(cfg core.ExportGo, spec core.Spec) error
 		}
 	}
 
-	var localesTemplateData []localeTemplateData
+	localesTemplateData := make([]localeTemplateData, 0, len(locales))
 	for locale := range locales {
 		localesTemplateData = append(localesTemplateData, localeTemplateData{
 			FileName: fmt.Sprintf("locale.%s.toml", locale),
@@ -166,7 +164,7 @@ func (e *GoExporter) renderLocalesEmbed(cfg core.ExportGo, spec core.Spec) error
 
 	fileName := filepath.Join(cfg.OutputPath, "error_locales_embed.go")
 
-	err = os.WriteFile(fileName, formattedSource, 0666)
+	err = os.WriteFile(fileName, formattedSource, 0o600)
 	if err != nil {
 		return err
 	}
@@ -213,7 +211,7 @@ func (e *GoExporter) renderErrors(cfg core.ExportGo, spec core.Spec) error {
 
 	fileName := filepath.Join(cfg.OutputPath, "errors.go")
 
-	err = os.WriteFile(fileName, formattedSource, 0666)
+	err = os.WriteFile(fileName, formattedSource, 0o600)
 	if err != nil {
 		return err
 	}
@@ -283,7 +281,7 @@ func (e *GoExporter) renderLocales(cfg core.ExportGo, spec core.Spec) error {
 
 		fileName := filepath.Join(cfg.OutputPath, fmt.Sprintf("locale.%s.toml", lang))
 
-		err = os.WriteFile(fileName, buf.Bytes(), 0666)
+		err = os.WriteFile(fileName, buf.Bytes(), 0o600)
 		if err != nil {
 			return fmt.Errorf("failed to write %s error locale messages to file: %w", lang, err)
 		}
@@ -292,12 +290,14 @@ func (e *GoExporter) renderLocales(cfg core.ExportGo, spec core.Spec) error {
 	return nil
 }
 
-func errorConstructorParams(e core.Error) string {
+func errorConstructorParams(coreErr core.Error) string {
 	var res string
-	for i, field := range e.Arguments() {
+
+	for i, field := range coreErr.Arguments() {
 		name := toParamName(field.Name())
 		res += name + " " + typeFromArgumentType(field.Typ())
-		if i != len(e.Arguments())-1 {
+
+		if i != len(coreErr.Arguments())-1 {
 			res += ", "
 		}
 	}
@@ -317,6 +317,8 @@ func typeFromArgumentType(argTyp core.ArgumentType) string {
 		return "bool"
 	case core.ArgumentTypeTimestamp:
 		return "time.Time"
+	case core.ArgumentTypeUnknown:
+		fallthrough
 	default:
 		panic("unknown argument type")
 	}

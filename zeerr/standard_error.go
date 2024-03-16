@@ -49,7 +49,10 @@ func NewError(
 	publicMsg := localizer.LocalizePublicMessage(uid, lang, args)
 
 	internalMsgBuf := bytes.NewBuffer(nil)
-	_ = internalMsgTmpl.Execute(internalMsgBuf, args)
+	err := internalMsgTmpl.Execute(internalMsgBuf, args)
+	if err != nil {
+		panic(err)
+	}
 
 	return &standardError{
 		code:        code,

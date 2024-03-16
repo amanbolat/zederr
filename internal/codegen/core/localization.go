@@ -31,6 +31,7 @@ func NewLocalization() Localization {
 
 func (l Localization) AllLanguages() []language.Tag {
 	arrSize := len(l.description) + len(l.title) + len(l.publicMessage) + len(l.internalMessage) + len(l.deprecated)
+
 	for _, translations := range l.arguments {
 		arrSize += len(translations)
 	}
@@ -40,15 +41,19 @@ func (l Localization) AllLanguages() []language.Tag {
 	for tag := range l.description {
 		tags = append(tags, tag)
 	}
+
 	for tag := range l.title {
 		tags = append(tags, tag)
 	}
+
 	for tag := range l.publicMessage {
 		tags = append(tags, tag)
 	}
+
 	for tag := range l.internalMessage {
 		tags = append(tags, tag)
 	}
+
 	for tag := range l.deprecated {
 		tags = append(tags, tag)
 	}
@@ -60,7 +65,6 @@ func (l Localization) AllLanguages() []language.Tag {
 	}
 
 	return tags
-
 }
 
 func (l Localization) Description() map[language.Tag]string {
@@ -78,13 +82,14 @@ func (l Localization) Title() map[language.Tag]string {
 }
 
 func (l Localization) Arguments() map[string]map[language.Tag]string {
-	m := map[string]map[language.Tag]string{}
+	args := map[string]map[language.Tag]string{}
+
 	for argName, translations := range l.arguments {
-		m[argName] = map[language.Tag]string{}
-		maps.Copy(m[argName], translations)
+		args[argName] = map[language.Tag]string{}
+		maps.Copy(args[argName], translations)
 	}
 
-	return m
+	return args
 }
 
 func (l Localization) PublicMessage() map[language.Tag]string {

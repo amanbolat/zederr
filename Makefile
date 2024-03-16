@@ -20,6 +20,14 @@ bin:
 bin.go-enum: bin
 	cd tools/deps && go mod tidy && GOBIN=$(BIN) go install -modfile go.mod github.com/abice/go-enum
 
+.PHONY: bin.golangci-lint
+bin.golangci-lint: bin
+	cd tools/deps && go mod tidy && GOBIN=$(BIN) go install -modfile go.mod github.com/golangci/golangci-lint/cmd/golangci-lint
+
+.PHONY: lint
+lint: bin.golangci-lint
+	$(BIN)/golangci-lint run
+
 .PHONY: gen.enums
 gen.enums: bin.go-enum
-	go-enum -file internal/codegen/core/argument_type.go --marshal --sql --nocase
+	$(BIN)/go-enum -file internal/codegen/core/argument_type.go --marshal --sql --nocase

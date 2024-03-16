@@ -7,9 +7,7 @@ import (
 	"unicode/utf8"
 )
 
-var (
-	argumentNameRegex = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$")
-)
+var argumentNameRegex = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$")
 
 // Argument represents an argument used in the error messages.
 type Argument struct {

@@ -2,22 +2,23 @@ package output_test
 
 import (
 	"bytes"
-	"fmt"
+	"io"
 	"os"
 	"testing"
 
-	"github.com/amanbolat/zederr/internal/codegen/core"
-	"github.com/amanbolat/zederr/internal/codegen/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"
 	"google.golang.org/grpc/codes"
+
+	"github.com/amanbolat/zederr/internal/codegen/core"
+	"github.com/amanbolat/zederr/internal/codegen/output"
 )
 
 func TestGoExporter(t *testing.T) {
-	e := output.GoExporter{}
+	exporter := output.GoExporter{}
 
-	b, err := core.NewErrorBuilder("1", "acme.com", "ns", "en")
+	builder, err := core.NewErrorBuilder("1", "acme.com", "ns", "en")
 	require.NoError(t, err)
 
 	localization := core.NewLocalization()
@@ -25,7 +26,7 @@ func TestGoExporter(t *testing.T) {
 	arg1, err := core.NewArgument("arg_1", "description", "string")
 	require.NoError(t, err)
 
-	zedErr, err := b.NewError(
+	zedErr, err := builder.NewError(
 		"code",
 		codes.Canceled,
 		400,
@@ -40,6 +41,7 @@ func TestGoExporter(t *testing.T) {
 		localization,
 	)
 	require.NoError(t, err)
+
 	zedErrs := []core.Error{
 		zedErr,
 	}
@@ -56,11 +58,17 @@ func TestGoExporter(t *testing.T) {
 	expectedLocaleRu, err := os.ReadFile("testdata/test01/locale.ru.toml")
 	require.NoError(t, err)
 
-	buf := bytes.NewBuffer(nil)
+	tempFile, err := os.CreateTemp("", "zederrtest.*.txt")
+	require.NoError(t, err)
+
+	defer tempFile.Close()
+
+	tempFileStat, err := tempFile.Stat()
+	require.NoError(t, err)
+
 	cfg := core.ExportGo{
 		PackageName: "zederrtest",
-		Output:      buf,
-		OutputPath:  "",
+		OutputPath:  tempFileStat.Name(),
 	}
 	spec := core.Spec{
 		Version:       "1",
@@ -70,15 +78,16 @@ func TestGoExporter(t *testing.T) {
 		Errors:        zedErrs,
 	}
 
-	err = e.Export(cfg, spec)
+	err = exporter.Export(cfg, spec)
 	require.NoError(t, err)
 
-	fmt.Println(buf.String())
+	buf, err := io.ReadAll(tempFile)
+	require.NoError(t, err)
 
 	expectedBuf := bytes.NewBuffer(nil)
 	expectedBuf.Write(expectedGoErrorsFile)
 	expectedBuf.Write(expectedGoEmbedFile)
 	expectedBuf.Write(expectedLocaleEn)
 	expectedBuf.Write(expectedLocaleRu)
-	assert.Equal(t, expectedBuf.String(), buf.String())
+	assert.Equal(t, expectedBuf.String(), string(buf))
 }

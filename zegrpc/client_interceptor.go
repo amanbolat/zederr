@@ -3,9 +3,10 @@ package zegrpc
 import (
 	"context"
 
-	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
+
+	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 )
 
 func StreamClientInterceptor() grpc.StreamClientInterceptor {

@@ -49,7 +49,7 @@ func (p *TemplateValidator) Validate(txt string) (err error) {
 
 	tree, ok := m[""]
 	if !ok {
-		return fmt.Errorf("parse.Tree returned by text/template parser is emtpy")
+		return fmt.Errorf("parse.Tree returned by text/template parser is empty")
 	}
 
 	if p.debug {

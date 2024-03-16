@@ -4,9 +4,10 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
-	"github.com/amanbolat/zederr/zeerr"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+
+	"github.com/amanbolat/zederr/zeerr"
 )
 
 type localizer struct {
@@ -22,7 +23,7 @@ func NewLocalizer(defaultLocale string, messagesMap map[string][]byte) (zeerr.Lo
 		return nil, fmt.Errorf("failed to parse default locale [%s]: %w", defaultLocale, err)
 	}
 
-	l := localizer{
+	loc := localizer{
 		defaultLang: defaultLocaleTag,
 		localizers:  map[language.Tag]*i18n.Localizer{},
 	}
@@ -31,11 +32,13 @@ func NewLocalizer(defaultLocale string, messagesMap map[string][]byte) (zeerr.Lo
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 
 	var defaultLangFound bool
+
 	for lang, data := range messagesMap {
 		langTag, err := language.Parse(lang)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse language tag from string [%s]: %w", lang, err)
 		}
+
 		if langTag == defaultLocaleTag {
 			defaultLangFound = true
 		}
@@ -43,14 +46,14 @@ func NewLocalizer(defaultLocale string, messagesMap map[string][]byte) (zeerr.Lo
 		bundlePath := fmt.Sprintf("%s.toml", lang)
 		bundle.MustParseMessageFileBytes(data, bundlePath)
 
-		l.localizers[langTag] = i18n.NewLocalizer(bundle, langTag.String())
+		loc.localizers[langTag] = i18n.NewLocalizer(bundle, langTag.String())
 	}
 
 	if !defaultLangFound {
 		return nil, fmt.Errorf("bundle has no messages for default locale [%s]", defaultLocaleTag)
 	}
 
-	return &l, nil
+	return &loc, nil
 }
 
 // LocalizePublicMessage localizes error's public message.

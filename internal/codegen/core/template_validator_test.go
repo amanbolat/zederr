@@ -3,8 +3,9 @@ package core_test
 import (
 	"testing"
 
-	"github.com/amanbolat/zederr/internal/codegen/core"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/amanbolat/zederr/internal/codegen/core"
 )
 
 func TestParser(t *testing.T) {
