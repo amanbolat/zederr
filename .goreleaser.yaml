@@ -1,0 +1,16 @@
+builds:
+  - id: zederr
+    main: ./cmd
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+        - amd64
+        - arm64
+universal_binaries:
+  - id: zederr
+    name_template: "{{.ProjectName}}_{{.Version}}"
+    replace: true
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
