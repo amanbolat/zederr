@@ -8,9 +8,34 @@ builds:
     goarch:
         - amd64
         - arm64
+
 universal_binaries:
   - id: zederr
     name_template: "{{.ProjectName}}_{{.Version}}"
     replace: true
     mod_timestamp: "{{ .CommitTimestamp }}"
 
+checksum:
+  name_template: 'checksums.txt'
+
+source:
+  enabled: true
+
+sboms:
+  - artifacts: archive
+  - id: source
+    artifacts: source
+
+signs:
+  - cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    certificate: '${artifact}.pem'
+    args:
+      - sign-blob
+      - '--output-certificate=${certificate}'
+      - '--output-signature=${signature}'
+      - '${artifact}'
+      - "--yes" # needed on cosign 2.0.0+
+    artifacts: checksum
+    output: true
