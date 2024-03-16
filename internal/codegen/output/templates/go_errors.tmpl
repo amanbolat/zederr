@@ -37,7 +37,7 @@ func New{{ .Code }}(ctx context.Context, {{ errorConstructorParams $zedErr }}) e
 		"{{ .Code }}",
 		"{{ .Domain }}",
 		"{{ .Namespace }}",
-		{{ .HttpCode }},
+		{{ .HTTPCode }},
         pkgcodes.{{ .GrpcCode }},
 		{{ toLowerCamel .Code }}InternalMsgTmpl,
 		zeerr.Arguments{
