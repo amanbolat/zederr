@@ -15,27 +15,20 @@ universal_binaries:
     replace: true
     mod_timestamp: "{{ .CommitTimestamp }}"
 
+brews:
+  - name: zederr@{{ .Major }}.{{ .Minor }}.{{ .Patch }}
+    homepage: "https://github.com/amanbolat/zederr"
+    license: "Apache-2.0"
+    description: > 
+      A tool for error codes documentation and code generation. 
+      You can define all the errors in one YAML file and generate strictly typed error constructors. 
+      Error public messages are automatically localized on initialization based on the user locale.
+    tap:
+      owner: amanbolat
+      name: homebrew-amanbolat
+    commit_author:
+      name: amanbolat
+      email: amanbolat@me.com
+
 checksum:
   name_template: 'checksums.txt'
-
-source:
-  enabled: true
-
-sboms:
-  - artifacts: archive
-  - id: source
-    artifacts: source
-
-signs:
-  - cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    certificate: '${artifact}.pem'
-    args:
-      - sign-blob
-      - '--output-certificate=${certificate}'
-      - '--output-signature=${signature}'
-      - '${artifact}'
-      - "--yes" # needed on cosign 2.0.0+
-    artifacts: checksum
-    output: true

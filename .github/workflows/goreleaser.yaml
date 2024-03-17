@@ -20,9 +20,6 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
 
-      - uses: sigstore/cosign-installer@v3.3.0
-      - uses: anchore/sbom-action/download-syft@v0.15.9
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@696b757ee8f3742e68b261173b9eeeb96306a57f # v5
         with:
