@@ -34,6 +34,8 @@ brews:
     commit_author:
       name: amanbolat
       email: amanbolat@me.com
+    install: |
+      bin.install zederr
 
 checksum:
   name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
