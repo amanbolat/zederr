@@ -1,6 +1,11 @@
 builds:
-  - id: zederr
+  - binary: zederr
     main: ./cmd
+    flags:
+      - -trimpath
+    ldflags: -s -w
+    env:
+      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
@@ -31,4 +36,4 @@ brews:
       email: amanbolat@me.com
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
