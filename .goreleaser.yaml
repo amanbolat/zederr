@@ -16,7 +16,7 @@ universal_binaries:
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 brews:
-  - name: zederr@{{ .Major }}.{{ .Minor }}.{{ .Patch }}
+  - name: zederr
     homepage: "https://github.com/amanbolat/zederr"
     license: "Apache-2.0"
     description: > 
