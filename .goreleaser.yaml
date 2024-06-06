@@ -39,21 +39,4 @@ snapshot:
 checksum:
   name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
 
-brews:
-  - name: zederr
-    folder: Formula
-    homepage: "https://github.com/amanbolat/zederr"
-    license: "Apache-2.0"
-    description: >
-      A tool for error codes documentation and code generation. 
-      You can define all the errors in one YAML file and generate strictly typed error constructors. 
-      Error public messages are automatically localized on initialization based on the user locale.
-    tap:
-      owner: amanbolat
-      name: homebrew-amanbolat
-    commit_author:
-      name: amanbolat
-      email: amanbolat@me.com
-    install: |
-      bin.install zederr
 
