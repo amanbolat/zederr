@@ -186,19 +186,24 @@ func (e *GoExporter) renderErrors(cfg core.ExportGo, spec core.Spec) error {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
+	imports := []string{
+		`context "context"`,
+		`template "html/template"`,
+		`zeerr "github.com/amanbolat/zederr/zeerr"`,
+		`zei18n "github.com/amanbolat/zederr/zei18n"`,
+		`pkgcodes "google.golang.org/grpc/codes"`,
+	}
+
+	if spec.HasTimestampArguments() {
+		imports = append(imports, `time "time"`)
+	}
+
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, goErrorsTemplateData{
 		PackageName:   cfg.PackageName,
 		DefaultLocale: spec.DefaultLocale.String(),
-		Imports: []string{
-			`context "context"`,
-			`template "html/template"`,
-			`zeerr "github.com/amanbolat/zederr/zeerr"`,
-			`zei18n "github.com/amanbolat/zederr/zei18n"`,
-			`pkgcodes "google.golang.org/grpc/codes"`,
-			`time "time"`,
-		},
-		Errors: spec.Errors,
+		Imports:       imports,
+		Errors:        spec.Errors,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)

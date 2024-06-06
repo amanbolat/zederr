@@ -20,7 +20,7 @@ func Encode(err error) *status.Status {
 
 	pbErr := encode(zedErr)
 
-	sts := status.New(zedErr.GRPCCode(), zedErr.UID())
+	sts := status.New(zedErr.GRPCCode(), zedErr.PublicMsg())
 	sts, err = sts.WithDetails(pbErr)
 	if err != nil {
 		panic(fmt.Errorf("failed to attach details to status: %w", err))

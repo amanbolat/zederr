@@ -30,7 +30,7 @@ var {{ toLowerCamel .Code }}InternalMsgTmpl = func() *template.Template {
 // New{{ .Code }} creates a new {{ .Code }}.
 //
 // Description: {{ .Description }}
-func New{{ .Code }}(ctx context.Context, {{ errorConstructorParams $zedErr }}) error {
+func New{{ .Code }}(ctx context.Context, {{ errorConstructorParams $zedErr }}) zeerr.Error {
 	return zeerr.NewError(
 		ctx,
 		localizer,

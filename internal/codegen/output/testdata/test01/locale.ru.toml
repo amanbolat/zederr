@@ -1,2 +1,0 @@
-["core.error_public"]
-other = "ошибка ядра {{.Error}}"

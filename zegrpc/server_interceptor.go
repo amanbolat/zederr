@@ -6,9 +6,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-type ErrorMapperFunc func(error) error
+type ErrorMapperFunc func(context.Context, error) error
 
-func defaultErrMapper(err error) error {
+func defaultErrMapper(_ context.Context, err error) error {
 	return err
 }
 
@@ -43,7 +43,7 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 			return nil
 		}
 
-		zedErr := cfg.errMapperFunc(err)
+		zedErr := cfg.errMapperFunc(ss.Context(), err)
 		sts := Encode(zedErr)
 
 		return sts.Err()
@@ -57,13 +57,18 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 		opt(cfg)
 	}
 
-	return func(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(
+		ctx context.Context,
+		req interface{},
+		_ *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		resp, err := handler(ctx, req)
 		if err == nil {
 			return resp, nil
 		}
 
-		zedErr := cfg.errMapperFunc(err)
+		zedErr := cfg.errMapperFunc(ctx, err)
 		sts := Encode(zedErr)
 
 		return resp, sts.Err()
