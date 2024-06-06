@@ -98,6 +98,10 @@ func (e *transportError) WithCauses(causes ...zeerr.Error) zeerr.Error {
 	return e
 }
 
+func (e *transportError) WithInternalErr(_ error) zeerr.Error {
+	return e
+}
+
 func (e transportError) Error() string {
 	return e.internalMsg
 }

@@ -24,6 +24,8 @@ type standardError struct {
 	publicMsg   string
 
 	causes []Error
+
+	internalErr error
 }
 
 // NewError creates a new error.
@@ -118,6 +120,11 @@ func (e standardError) Causes() []Error {
 }
 
 // WithCauses is used to attach causes to the error.
+// Causes should be of type Error and it's used to create
+// complex nested error structures.
+//
+// Causes will not be unwrapped by the standard error implementation.
+// To include internal error use WithInternalErr instead.
 func (e *standardError) WithCauses(causes ...Error) Error {
 	for _, c := range causes {
 		if c != nil {
@@ -126,6 +133,20 @@ func (e *standardError) WithCauses(causes ...Error) Error {
 	}
 
 	return e
+}
+
+// WithInternalErr is used to attach an internal error to the error.
+// This error will be unwrapped by the standard error implementation.
+// Internal error will not be included in the encoded transport error.
+func (e *standardError) WithInternalErr(internalErr error) Error {
+	e.internalErr = internalErr
+
+	return e
+}
+
+// Unwrap returns an internal error.
+func (e *standardError) Unwrap() error {
+	return e.internalErr
 }
 
 // Error implements the error interface.
@@ -140,6 +161,12 @@ func (e *standardError) formattedErr() string {
 	for _, cause := range e.causes {
 		buf.WriteString("\n\t")
 		buf.WriteString(cause.Error())
+	}
+
+	if e.internalErr != nil {
+		buf.WriteString("\n\t")
+		buf.WriteString("internal error: ")
+		buf.WriteString(e.internalErr.Error())
 	}
 
 	return buf.String()

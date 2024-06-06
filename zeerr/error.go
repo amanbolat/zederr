@@ -46,6 +46,10 @@ type Error interface {
 	Causes() []Error
 	// WithCauses is used to attach causes to the error.
 	WithCauses(causes ...Error) Error
+	// WithInternalErr is used to attach internal error to the error.
+	// Internal errors are not exposed to the client and are used for
+	// debugging purposes.
+	WithInternalErr(internalErr error) Error
 	// Error implements the error interface.
 	Error() string
 }
