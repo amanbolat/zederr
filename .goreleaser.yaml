@@ -3,7 +3,7 @@ version: 2
 
 builds:
   - binary: zederr
-    main: ./cmd/
+    main: ./cmd/zederr
     flags:
       - -trimpath
     ldflags: -s -w
