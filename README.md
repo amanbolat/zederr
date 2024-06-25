@@ -4,11 +4,11 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/amanbolat/zederr)](https://goreportcard.com/report/github.com/amanbolat/zederr)
 [![codecov](https://codecov.io/gh/amanbolat/zederr/branch/master/graph/badge.svg)](https://codecov.io/gh/amanbolat/zederr)
 
-# About
+## About
 
 `zederr` is a tool for error codes documentation and code generation. You can define all the errors in one YAML file and generate strictly typed error constructors. Error public messages are automatically localized on initialization based on the user locale. 
 
-# Why
+## Why
 
 If your application returns error,
 it implies that the consumers rely on them and might have corresponding business logic.
@@ -32,62 +32,82 @@ but there are a few other challenges that you might face after.
 
 `zederr` tries to address all those issues. It requires you to write an error specification the same way you write OpenAPI specification to describe your service API. All the errors are declared in Error Specification file. The latter will be used to generate Go code to easily construct errors in runtime. 
 
-# Features
+## Features
 
 - Specification. Create a specification for all errors that your application might return.
 - Documentation. Auto-generate a nice documentation to share with your service consumers.
 - Localization. Localize all the error messages.
 - Go code generation. Generate strictly typed error constructors.
 
+## Error types
+
+- Detailed error
+- Minimal error
 
 
-# Example
+## Example
 
 The example below is a good illustration of `zederr` functionality.
 
 Specification file:
 
 ```yaml
+# Specification version tells the parser which version of the specification to use.
+# Required.
 spec_version: "1"
-domain: acme.com
-namespace: auth
+# Default locale for error content localization. Example: `en`.
+# Required.
 default_locale: en
 
+# The collection of error codes and their metadata.
 errors:
-  account_locked:
+  # Unique error code.
+  # It will be used to generate a human-readable error code constructor.
+  "account_locked":
+    # Description of the error code.
+    # Required.
     description: Account is locked due to too many failed login attempts.
-    deprecated: ""
+    # Deprecation reason. If not empty, the error code is considered deprecated.
+    # Optional.
+    is_deprecated: false
+    # HTTP status code for the error code.
+    # Default: 500
+    # Optional.
     http_code: 401
+    # A gRPC status code for the error code.
     grpc_code: 1
+    # Arguments that can be used in the error message templates.
+    # Optional.
     arguments:
       user_id:
+        # Argument type.
+        # Required.
         type: "string"
+        # Argument description.
+        # Optional.
         description: "User ID"
-        is_internal: "true"
       failed_attempts:
         type: "int"
         description: "Number of failed login attempts"
       unlock_time:
         type: "timestamp"
         description: "Time when the account will be unlocked"
-    title: "Account is locked"
-    internal_message: "User with id {{ .user_id }} failed to provide correct credentials {{ .failed_attempts }} times. The account is locked until {{ .unlock_time }}."
-    public_message: "Your account is locked due to too many failed login attempts ({{ .failed_attempts }})."
+    # Error message template.
+    # Required.
+    message: "Your account is locked due to too many failed login attempts ({{ .failed_attempts }}). It will be unlocked at {{ .unlock_time }}."
+    # Localization for the error code.
+    # Optional.
     localization:
+      # Localization for the arguments.
+      # Required for all the arguments listed in the `arguments` section.
       arguments:
         user_id:
           description:
             zh: "用户ID"
       description:
         zh: "由于登录尝试失败次数过多，帐户已被锁定。"
-      title:
-        zh: "帐户已锁定"
-      internal_message:
-        zh: "用户ID为{{ .user_id }}的用户提供了错误的凭据{{ .failed_attempts }}次。帐户将被锁定直到{{ .unlock_time }}。"
-      public_message:
+      message:
         zh: "由于登录尝试失败次数过多，您的帐户已被锁定({{ .failed_attempts }})。"
-      deprecated:
-        zh: ""
 ```
 
 Running the command bellow will generate Go constructors for each error in the specification file:
@@ -100,17 +120,14 @@ As you can see `zederr` generates a constructor that requires you to provide all
 and each argument has the correct type:
 
 ```go
-func NewAccountLocked(ctx context.Context, user_id string, failed_attempts int, unlock_time time.Time) error {
+func NewAccountLocked(ctx context.Context, user_id string, failed_attempts int, unlock_time time.Time) *zeerr.Error {
 	return zeerr.NewError(
 		ctx,
 		localizer,
-		"AccountLocked",
-		"acme.com",
-		"auth",
+		"account_locked",
 		401,
 		pkgcodes.Canceled,
-		accountLockedInternalMsgTmpl,
-		zeerr.Arguments{
+		map[string]any{
 			"user_id":         user_id,
 			"failed_attempts": failed_attempts,
 			"unlock_time":     unlock_time,
@@ -122,30 +139,16 @@ func NewAccountLocked(ctx context.Context, user_id string, failed_attempts int, 
 If you construct that error and encode to JSON:
 
 ```go
-zederr.NewAccountLocked(zeerr.ContextWithLocale(context.Background(), language.Chinese), "user_1", 1, time.Now())
+err := zederr.NewAccountLocked(zeerr.ContextWithLocale(context.Background(), language.Chinese), "user_1", 1, time.Now())
 ```
 
-The result will be:
+The error message of `err.Error()` will be:
 
-```json
-{
-  "uid": "acme.com/auth/AccountLocked",
-  "domain": "acme.com",
-  "namespace": "auth",
-  "code": "AccountLocked",
-  "httpCode": "401",
-  "grpcCode": "1",
-  "publicMessage": "由于登录尝试失败次数过多，您的帐户已被锁定(1)。",
-  "internalMessage": "User with id user_1 failed to provide correct credentials 1 times. The account is locked until 2024-03-05 00:08:52.",
-  "arguments": {
-    "failed_attempts": 1,
-    "unlock_time": "2024-03-05 00:08:52.047377 +0100 CET m=+0.003455751",
-    "user_id": "user_1"
-  }
-}
+```text
+由于登录尝试失败次数过多，您的帐户已被锁定(1)。其将在2024-06-26 00:36:06.33748 +0200 CEST m=+0.002228543自动解冻
 ```
 
-# License
+## License
 
 Apache License Version 2.0
 
