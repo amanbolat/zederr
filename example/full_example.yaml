@@ -1,0 +1,56 @@
+# Specification version tells the parser which version of the specification to use.
+# Required.
+spec_version: "1"
+# Default locale for error content localization. Example: `en`.
+# Required.
+default_locale: en
+
+# The collection of error codes and their metadata.
+errors:
+  # Unique error code.
+  # It will be used to generate a human-readable error code constructor.
+  "account_locked":
+    # Description of the error code.
+    # Required.
+    description: Account is locked due to too many failed login attempts.
+    # Deprecation reason. If not empty, the error code is considered deprecated.
+    # Optional.
+    is_deprecated: false
+    # HTTP status code for the error code.
+    # Default: 500
+    # Optional.
+    http_code: 401
+    # A gRPC status code for the error code.
+    grpc_code: 1
+    # Arguments that can be used in the error message templates.
+    # Optional.
+    arguments:
+      user_id:
+        # Argument type.
+        # Required.
+        type: "string"
+        # Argument description.
+        # Optional.
+        description: "User ID"
+      failed_attempts:
+        type: "int"
+        description: "Number of failed login attempts"
+      unlock_time:
+        type: "timestamp"
+        description: "Time when the account will be unlocked"
+    # Error message template.
+    # Required.
+    message: "Your account is locked due to too many failed login attempts ({{ .failed_attempts }}). It will be unlocked at {{ .unlock_time }}."
+    # Localization for the error code.
+    # Optional.
+    localization:
+      # Localization for the arguments.
+      # Required for all the arguments listed in the `arguments` section.
+      arguments:
+        user_id:
+          description:
+            zh: "用户ID"
+      description:
+        zh: "由于登录尝试失败次数过多，帐户已被锁定。"
+      message:
+        zh: "由于登录尝试失败次数过多，您的帐户已被锁定({{ .failed_attempts }})。其将在{{ .unlock_time }}自动解冻"

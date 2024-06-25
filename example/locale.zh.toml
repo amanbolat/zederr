@@ -1,0 +1,8 @@
+[account_locked_argument_user_id]
+other = "用户ID"
+
+[account_locked_description]
+other = "由于登录尝试失败次数过多，帐户已被锁定。"
+
+[account_locked_message]
+other = "由于登录尝试失败次数过多，您的帐户已被锁定({{ .failed_attempts }})。其将在{{ .unlock_time }}自动解冻"

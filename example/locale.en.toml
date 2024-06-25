@@ -1,0 +1,14 @@
+[account_locked_argument_failed_attempts]
+other = "Number of failed login attempts"
+
+[account_locked_argument_unlock_time]
+other = "Time when the account will be unlocked"
+
+[account_locked_argument_user_id]
+other = "User ID"
+
+[account_locked_description]
+other = "Account is locked due to too many failed login attempts."
+
+[account_locked_message]
+other = "Your account is locked due to too many failed login attempts ({{ .failed_attempts }}). It will be unlocked at {{ .unlock_time }}."
