@@ -56,15 +56,15 @@ func NewLocalizer(defaultLocale string, messagesMap map[string][]byte) (zeerr.Lo
 	return &loc, nil
 }
 
-// LocalizePublicMessage localizes error's public message.
-func (l *localizer) LocalizePublicMessage(errUID string, lang language.Tag, args zeerr.Arguments) string {
+// LocalizeMessage localizes error's public message.
+func (l *localizer) LocalizeMessage(id string, lang language.Tag, args map[string]any) string {
 	loc, ok := l.localizers[lang]
 	if !ok {
 		loc = l.localizers[l.defaultLang]
 	}
 
 	msg, err := loc.Localize(&i18n.LocalizeConfig{
-		MessageID:    errUID + "_public_msg",
+		MessageID:    id + "_message",
 		TemplateData: args,
 	})
 	if err != nil {
