@@ -14,7 +14,6 @@ func ContextWithLocale(ctx context.Context, lang language.Tag) context.Context {
 
 // Localizer is responsible for localizing public and internal error messages.
 type Localizer interface {
-	// LocalizePublicMessage localizes error's public message.
-	// Usually it's used only during the error construction.
-	LocalizePublicMessage(errUID string, lang language.Tag, args Arguments) string
+	// LocalizeMessage localizes error's message.
+	LocalizeMessage(id string, lang language.Tag, args map[string]any) string
 }
