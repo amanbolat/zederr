@@ -12,8 +12,6 @@ import (
 
 type ErrorListSpecification struct {
 	SpecVersion   string       `yaml:"spec_version"`
-	Domain        string       `yaml:"domain"`
-	Namespace     string       `yaml:"namespace"`
 	DefaultLocale string       `yaml:"default_locale"`
 	Errors        ErrorEntries `yaml:"errors"`
 }
@@ -101,27 +99,22 @@ func (a *LocalizationArguments) UnmarshalYAML(value *yaml.Node) error {
 }
 
 type Localization struct {
-	Arguments       LocalizationArguments `yaml:"arguments"`
-	Description     Translations          `yaml:"description"`
-	Title           Translations          `yaml:"title"`
-	InternalMessage Translations          `yaml:"internal_message"`
-	PublicMessage   Translations          `yaml:"public_message"`
-	Deprecated      Translations          `yaml:"deprecated"`
+	Arguments   LocalizationArguments `yaml:"arguments"`
+	Description Translations          `yaml:"description"`
+	Message     Translations          `yaml:"message"`
 }
 
 // ErrorEntry represents a single error entry in the error codes file.
 // It is used only for unmarshalling from the source file.
 type ErrorEntry struct {
-	Code            string        `yaml:"code"`
-	GRPCCode        codes.Code    `yaml:"grpc_code"`
-	HTTPCode        int           `yaml:"http_code"`
-	Description     string        `yaml:"description"`
-	Deprecated      string        `yaml:"deprecated"`
-	Arguments       Arguments     `yaml:"arguments"`
-	Title           string        `yaml:"title"`
-	InternalMessage string        `yaml:"internal_message"`
-	PublicMessage   string        `yaml:"public_message"`
-	Localization    *Localization `yaml:"localization"`
+	Code         string        `yaml:"code"`
+	GRPCCode     codes.Code    `yaml:"grpc_code"`
+	HTTPCode     int           `yaml:"http_code"`
+	Description  string        `yaml:"description"`
+	IsDeprecated bool          `yaml:"is_deprecated"`
+	Arguments    Arguments     `yaml:"arguments"`
+	Message      string        `yaml:"message"`
+	Localization *Localization `yaml:"localization"`
 }
 
 // ErrorEntries is used to customize YAML unmarshalling of ErrorEntry.

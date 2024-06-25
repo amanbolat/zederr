@@ -15,8 +15,9 @@ func NewGen() *cobra.Command {
 	cfg := core.Config{}
 
 	genCmd := &cobra.Command{
-		Use:   "gen",
-		Short: "Generates error codes and messages.",
+		Use:          "gen",
+		Short:        "Generates error codes and messages.",
+		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := generateCode(cfg); err != nil {
 				return err

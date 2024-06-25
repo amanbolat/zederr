@@ -6,8 +6,6 @@ import (
 
 type Spec struct {
 	Version       string
-	Domain        string
-	Namespace     string
 	DefaultLocale language.Tag
 	Errors        []Error
 }

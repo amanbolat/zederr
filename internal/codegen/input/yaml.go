@@ -39,7 +39,7 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 		return core.Spec{}, fmt.Errorf("failed to parse default locale: %w", err)
 	}
 
-	errBuilder, err := core.NewErrorBuilder(yamlSpec.SpecVersion, yamlSpec.Domain, yamlSpec.Namespace, yamlSpec.DefaultLocale)
+	errBuilder, err := core.NewErrorBuilder(yamlSpec.SpecVersion, yamlSpec.DefaultLocale)
 	if err != nil {
 		return core.Spec{}, fmt.Errorf("failed to create error builder: %w", err)
 	}
@@ -61,13 +61,6 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 		localization := core.NewLocalization()
 
 		if entry.Localization != nil {
-			for _, tr := range entry.Localization.Title {
-				err = localization.AddTitleTranslation(tr.Lang, tr.Value)
-				if err != nil {
-					return core.Spec{}, err
-				}
-			}
-
 			for _, tr := range entry.Localization.Description {
 				err = localization.AddDescriptionTranslation(tr.Lang, tr.Value)
 				if err != nil {
@@ -75,22 +68,8 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 				}
 			}
 
-			for _, tr := range entry.Localization.PublicMessage {
-				err = localization.AddPublicMessageTranslation(tr.Lang, tr.Value)
-				if err != nil {
-					return core.Spec{}, err
-				}
-			}
-
-			for _, tr := range entry.Localization.InternalMessage {
-				err = localization.AddInternalMessageTranslation(tr.Lang, tr.Value)
-				if err != nil {
-					return core.Spec{}, err
-				}
-			}
-
-			for _, tr := range entry.Localization.Deprecated {
-				err = localization.AddDeprecatedTranslation(tr.Lang, tr.Value)
+			for _, tr := range entry.Localization.Message {
+				err = localization.AddMessageTranslation(tr.Lang, tr.Value)
 				if err != nil {
 					return core.Spec{}, err
 				}
@@ -108,13 +87,11 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 
 		zedErr, err := errBuilder.NewError(
 			entry.Code,
+			entry.Message,
 			entry.GRPCCode,
 			entry.HTTPCode,
 			entry.Description,
-			entry.Title,
-			entry.PublicMessage,
-			entry.InternalMessage,
-			entry.Deprecated,
+			entry.IsDeprecated,
 			args,
 			localization,
 		)
@@ -127,8 +104,6 @@ func (i *YAMLImporter) Import(src io.Reader) (core.Spec, error) {
 
 	spec := core.Spec{
 		Version:       yamlSpec.SpecVersion,
-		Domain:        yamlSpec.Domain,
-		Namespace:     yamlSpec.Namespace,
 		DefaultLocale: defaultLocale,
 		Errors:        zedErrors,
 	}

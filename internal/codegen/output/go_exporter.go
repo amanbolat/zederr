@@ -125,7 +125,7 @@ func (e *GoExporter) renderLocalesEmbed(cfg core.ExportGo, spec core.Spec) error
 	locales := make(map[language.Tag]struct{})
 
 	for _, coreErr := range spec.Errors {
-		for _, locale := range coreErr.Translations().AllLanguages() {
+		for _, locale := range coreErr.Localization().AllLanguages() {
 			locales[locale] = struct{}{}
 		}
 	}
@@ -177,6 +177,7 @@ func (e *GoExporter) renderErrors(cfg core.ExportGo, spec core.Spec) error {
 	tmpl.Funcs(template.FuncMap{
 		"errorConstructorParams": errorConstructorParams,
 		"toLowerCamel":           strcase.ToLowerCamel,
+		"toCamel":                strcase.ToCamel,
 		"toParamName":            toParamName,
 		"toUpper":                strings.ToUpper,
 	})
@@ -188,7 +189,6 @@ func (e *GoExporter) renderErrors(cfg core.ExportGo, spec core.Spec) error {
 
 	imports := []string{
 		`context "context"`,
-		`template "html/template"`,
 		`zeerr "github.com/amanbolat/zederr/zeerr"`,
 		`zei18n "github.com/amanbolat/zederr/zei18n"`,
 		`pkgcodes "google.golang.org/grpc/codes"`,
@@ -228,7 +228,7 @@ func (e *GoExporter) renderLocales(cfg core.ExportGo, spec core.Spec) error {
 	entryMap := map[language.Tag]map[string]localeEntry{}
 
 	for _, coreErr := range spec.Errors {
-		for _, lang := range coreErr.Translations().AllLanguages() {
+		for _, lang := range coreErr.Localization().AllLanguages() {
 			if _, ok := entryMap[lang]; !ok {
 				entryMap[lang] = make(map[string]localeEntry)
 			}
@@ -236,40 +236,22 @@ func (e *GoExporter) renderLocales(cfg core.ExportGo, spec core.Spec) error {
 	}
 
 	for _, coreErr := range spec.Errors {
-		for lang, translation := range coreErr.Translations().PublicMessage() {
-			entryMap[lang][coreErr.UID()+"_public_msg"] = localeEntry{
+		for lang, translation := range coreErr.Localization().Message() {
+			entryMap[lang][coreErr.ID()+"_message"] = localeEntry{
 				Other: translation,
 			}
 		}
 
-		for lang, translation := range coreErr.Translations().InternalMessage() {
-			entryMap[lang][coreErr.UID()+"_internal_msg"] = localeEntry{
-				Other: translation,
-			}
-		}
-
-		for argName, translations := range coreErr.Translations().Arguments() {
+		for argName, translations := range coreErr.Localization().Arguments() {
 			for lang, translation := range translations {
-				entryMap[lang][coreErr.UID()+"_argument_"+argName] = localeEntry{
+				entryMap[lang][coreErr.ID()+"_argument_"+argName] = localeEntry{
 					Other: translation,
 				}
 			}
 		}
 
-		for lang, translation := range coreErr.Translations().Deprecated() {
-			entryMap[lang][coreErr.UID()+"_deprecated"] = localeEntry{
-				Other: translation,
-			}
-		}
-
-		for lang, translation := range coreErr.Translations().Description() {
-			entryMap[lang][coreErr.UID()+"_description"] = localeEntry{
-				Other: translation,
-			}
-		}
-
-		for lang, translation := range coreErr.Translations().Title() {
-			entryMap[lang][coreErr.UID()+"_title"] = localeEntry{
+		for lang, translation := range coreErr.Localization().Description() {
+			entryMap[lang][coreErr.ID()+"_description"] = localeEntry{
 				Other: translation,
 			}
 		}

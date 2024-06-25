@@ -20,27 +20,19 @@ var localizer = func() zeerr.Localizer {
 
 {{- range .Errors }}
 {{- $zedErr := . }}
-{{- $paramsTypeName := printf "%sParams" .Code }}
+{{- $paramsTypeName := printf "%sParams" .ID }}
 
-var {{ toLowerCamel .Code }}InternalMsgTmpl = func() *template.Template {
-	t, _ := template.New("").Parse("{{ .InternalMessage }}")
-	return t
-}()
-
-// New{{ .Code }} creates a new {{ .Code }}.
+// New{{ toCamel .ID }} creates a new `{{ .ID }}` error.
 //
 // Description: {{ .Description }}
-func New{{ .Code }}(ctx context.Context, {{ errorConstructorParams $zedErr }}) zeerr.Error {
+func New{{ toCamel .ID }}(ctx context.Context, {{ errorConstructorParams $zedErr }}) *zeerr.Error {
 	return zeerr.NewError(
 		ctx,
 		localizer,
-		"{{ .Code }}",
-		"{{ .Domain }}",
-		"{{ .Namespace }}",
+		"{{ .ID }}",
 		{{ .HTTPCode }},
-        pkgcodes.{{ .GrpcCode }},
-		{{ toLowerCamel .Code }}InternalMsgTmpl,
-		zeerr.Arguments{
+        pkgcodes.{{ .GRPCCode }},
+		map[string]any{
             {{- range .Arguments }}
                 "{{ .Name }}": {{ toParamName .Name }},
             {{- end }}
