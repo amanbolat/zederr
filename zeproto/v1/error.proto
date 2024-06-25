@@ -7,14 +7,10 @@ import "google/protobuf/struct.proto";
 option go_package = "github.com/amanbolat/zederr/zeproto/v1;pbzederrv1";
 
 message Error {
-  string uid = 1;
-  string domain = 2;
-  string namespace = 3;
-  string code = 4;
-  int64 http_code = 5;
-  uint64 grpc_code = 6;
-  string public_message = 7;
-  string internal_message = 8;
-  google.protobuf.Struct arguments = 9;
-  repeated Error causes = 10;
+  string id = 1;
+  int32 grpc_code = 2;
+  int32 http_code = 3;
+  string message = 4;
+  google.protobuf.Struct arguments = 5;
+  repeated Error causes = 6;
 }
