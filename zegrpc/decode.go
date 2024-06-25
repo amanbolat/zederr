@@ -3,47 +3,45 @@ package zegrpc
 import (
 	"google.golang.org/grpc/codes"
 
-	"github.com/amanbolat/zederr/internal/transport"
 	"github.com/amanbolat/zederr/zeerr"
 	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 )
 
-func Decode(pbErr *pbzederrv1.Error) (zeerr.Error, error) {
-	return decode(pbErr)
+type Decoder interface {
+	Decode(pbErr *pbzederrv1.Error) *zeerr.Error
 }
 
-func decode(pbErr *pbzederrv1.Error) (zeerr.Error, error) {
-	args := make(zeerr.Arguments)
+type SimpleDecoder struct{}
+
+func (d SimpleDecoder) Decode(pbErr *pbzederrv1.Error) *zeerr.Error {
+	return d.decode(pbErr)
+}
+
+func (d SimpleDecoder) decode(pbErr *pbzederrv1.Error) *zeerr.Error {
+	args := make(map[string]any)
 
 	if pbErr.Arguments != nil {
 		args = pbErr.Arguments.AsMap()
 	}
 
-	zedErr := transport.NewError(
-		pbErr.Code,
-		pbErr.Domain,
-		pbErr.Namespace,
-		pbErr.Uid,
+	zedErr := zeerr.RestoreError(
+		pbErr.Id,
 		int(pbErr.HttpCode),
 		codes.Code(pbErr.GrpcCode),
 		args,
-		pbErr.InternalMessage,
-		pbErr.PublicMessage,
+		pbErr.Message,
 		nil,
 	)
 
 	if len(pbErr.Causes) == 0 {
-		return zedErr, nil
+		return zedErr
 	}
 
 	for _, c := range pbErr.Causes {
-		cause, err := decode(c)
-		if err != nil {
-			return nil, err
-		}
+		cause := d.decode(c)
 
 		zedErr = zedErr.WithCauses(cause)
 	}
 
-	return zedErr, nil
+	return zedErr
 }

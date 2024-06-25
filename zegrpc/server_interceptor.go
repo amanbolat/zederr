@@ -12,26 +12,34 @@ func defaultErrMapper(_ context.Context, err error) error {
 	return err
 }
 
-type serverConfig struct {
+type serverInterceptorConfig struct {
 	errMapperFunc ErrorMapperFunc
+	encoder       Encoder
 }
 
-func defaultServerConfig() *serverConfig {
-	return &serverConfig{
+func defaultServerInterceptorConfig() *serverInterceptorConfig {
+	return &serverInterceptorConfig{
 		errMapperFunc: defaultErrMapper,
+		encoder:       NewSimpleEncoder(defaultStatusCode, defaultStatusMessage),
 	}
 }
 
-type Option func(*serverConfig)
+type ServerInterceptorOption func(*serverInterceptorConfig)
 
-func WithErrorMapper(errMapperFunc ErrorMapperFunc) Option {
-	return func(c *serverConfig) {
+func WithErrorMapper(errMapperFunc ErrorMapperFunc) ServerInterceptorOption {
+	return func(c *serverInterceptorConfig) {
 		c.errMapperFunc = errMapperFunc
 	}
 }
 
-func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
-	cfg := defaultServerConfig()
+func WithEncoder(encoder Encoder) ServerInterceptorOption {
+	return func(c *serverInterceptorConfig) {
+		c.encoder = encoder
+	}
+}
+
+func StreamServerInterceptor(opts ...ServerInterceptorOption) grpc.StreamServerInterceptor {
+	cfg := defaultServerInterceptorConfig()
 
 	for _, opt := range opts {
 		opt(cfg)
@@ -44,32 +52,27 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		}
 
 		zedErr := cfg.errMapperFunc(ss.Context(), err)
-		sts := Encode(zedErr)
+		sts := cfg.encoder.Encode(zedErr)
 
 		return sts.Err()
 	}
 }
 
-func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
-	cfg := defaultServerConfig()
+func UnaryServerInterceptor(opts ...ServerInterceptorOption) grpc.UnaryServerInterceptor {
+	cfg := defaultServerInterceptorConfig()
 
 	for _, opt := range opts {
 		opt(cfg)
 	}
 
-	return func(
-		ctx context.Context,
-		req interface{},
-		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	return func(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		resp, err := handler(ctx, req)
 		if err == nil {
 			return resp, nil
 		}
 
 		zedErr := cfg.errMapperFunc(ctx, err)
-		sts := Encode(zedErr)
+		sts := cfg.encoder.Encode(zedErr)
 
 		return resp, sts.Err()
 	}

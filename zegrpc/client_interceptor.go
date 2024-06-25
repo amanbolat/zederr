@@ -9,52 +9,69 @@ import (
 	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 )
 
-func StreamClientInterceptor() grpc.StreamClientInterceptor {
+type clientInterceptorConfig struct {
+	decoder Decoder
+}
+
+func defaultClientInterceptorConfig() *clientInterceptorConfig {
+	return &clientInterceptorConfig{
+		decoder: SimpleDecoder{},
+	}
+}
+
+type ClientInterceptorOption func(config *clientInterceptorConfig)
+
+func StreamClientInterceptor(opts ...ClientInterceptorOption) grpc.StreamClientInterceptor {
+	cfg := defaultClientInterceptorConfig()
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		cltStream, err := streamer(ctx, desc, cc, method, opts...)
-		if err == nil {
-			return cltStream, nil
-		}
 
-		sts, ok := status.FromError(err)
-		if !ok {
-			return cltStream, err
-		}
+		if err != nil {
+			sts, ok := status.FromError(err)
+			if !ok {
+				return nil, err
+			}
 
-		for _, detail := range sts.Details() {
-			if v, ok := detail.(*pbzederrv1.Error); ok {
-				zedErr, decodeErr := Decode(v)
-				if decodeErr == nil {
-					return cltStream, zedErr
+			for _, detail := range sts.Details() {
+				if v, ok := detail.(*pbzederrv1.Error); ok {
+					zedErr := cfg.decoder.Decode(v)
+
+					return nil, zedErr
 				}
 			}
 		}
 
-		return cltStream, err
+		return cltStream, nil
 	}
 }
 
-func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
+func UnaryClientInterceptor(opts ...ClientInterceptorOption) grpc.UnaryClientInterceptor {
+	cfg := defaultClientInterceptorConfig()
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		err := invoker(ctx, method, req, reply, cc, opts...)
-		if err == nil {
-			return nil
-		}
+		if err != nil {
+			sts, ok := status.FromError(err)
+			if !ok {
+				return err
+			}
 
-		sts, ok := status.FromError(err)
-		if !ok {
-			return err
-		}
+			for _, detail := range sts.Details() {
+				if v, ok := detail.(*pbzederrv1.Error); ok {
+					zedErr := cfg.decoder.Decode(v)
 
-		for _, detail := range sts.Details() {
-			if v, ok := detail.(*pbzederrv1.Error); ok {
-				zedErr, err := Decode(v)
-				if err == nil {
 					return zedErr
 				}
 			}
 		}
 
-		return err
+		return nil
 	}
 }

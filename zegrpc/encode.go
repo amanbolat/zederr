@@ -12,15 +12,69 @@ import (
 	pbzederrv1 "github.com/amanbolat/zederr/zeproto/v1"
 )
 
-func Encode(err error) *status.Status {
-	var zedErr zeerr.Error
-	if !errors.As(err, &zedErr) {
-		return status.New(codes.Unknown, "unknown error")
+const (
+	defaultStatusCode    = codes.Unknown
+	defaultStatusMessage = "unknown error"
+)
+
+type Encoder interface {
+	Encode(err error) *status.Status
+}
+
+type SimpleEncoder struct {
+	statusCode    codes.Code
+	statusMessage string
+}
+
+func NewSimpleEncoder(statusCode codes.Code, statusMessage string) SimpleEncoder {
+	return SimpleEncoder{
+		statusCode:    statusCode,
+		statusMessage: statusMessage,
+	}
+}
+
+func (e SimpleEncoder) Encode(err error) *status.Status {
+	statusErr, ok := status.FromError(err)
+	if ok {
+		return statusErr
 	}
 
-	pbErr := encode(zedErr)
+	var zedErr *zeerr.Error
+	if !errors.As(err, &zedErr) {
+		return status.New(e.statusCode, e.statusMessage)
+	}
 
-	sts := status.New(zedErr.GRPCCode(), zedErr.PublicMsg())
+	sts := status.New(zedErr.GRPCCode(), zedErr.Message())
+
+	return sts
+}
+
+type FullEncoder struct {
+	statusCode    codes.Code
+	statusMessage string
+}
+
+func NewFullEncoder(statusCode codes.Code, statusMessage string) SimpleEncoder {
+	return SimpleEncoder{
+		statusCode:    statusCode,
+		statusMessage: statusMessage,
+	}
+}
+
+func (e FullEncoder) Encode(err error) *status.Status {
+	statusErr, ok := status.FromError(err)
+	if ok {
+		return statusErr
+	}
+
+	var zedErr *zeerr.Error
+	if !errors.As(err, &zedErr) {
+		return status.New(e.statusCode, e.statusMessage)
+	}
+
+	pbErr := e.encode(zedErr)
+
+	sts := status.New(zedErr.GRPCCode(), zedErr.Message())
 	sts, err = sts.WithDetails(pbErr)
 	if err != nil {
 		panic(fmt.Errorf("failed to attach details to status: %w", err))
@@ -29,23 +83,19 @@ func Encode(err error) *status.Status {
 	return sts
 }
 
-func encode(zedErr zeerr.Error) *pbzederrv1.Error {
-	pbArgs, err := structpb.NewStruct(zedErr.Args())
+func (e FullEncoder) encode(zedErr *zeerr.Error) *pbzederrv1.Error {
+	pbArgs, err := structpb.NewStruct(zedErr.Arguments())
 	if err != nil {
 		panic(fmt.Errorf("failed to convert args to structpb: %w", err))
 	}
 
 	pbErr := &pbzederrv1.Error{
-		Uid:             zedErr.UID(),
-		Domain:          zedErr.Domain(),
-		Namespace:       zedErr.Namespace(),
-		Code:            zedErr.Code(),
-		HttpCode:        int64(zedErr.HTTPCode()),
-		GrpcCode:        uint64(zedErr.GRPCCode()),
-		PublicMessage:   zedErr.PublicMsg(),
-		InternalMessage: zedErr.InternalMsg(),
-		Arguments:       pbArgs,
-		Causes:          nil,
+		Id:        zedErr.ID(),
+		GrpcCode:  int32(zedErr.GRPCCode()),
+		HttpCode:  int32(zedErr.HTTPCode()),
+		Message:   zedErr.Message(),
+		Arguments: pbArgs,
+		Causes:    nil,
 	}
 
 	if len(zedErr.Causes()) == 0 {
@@ -55,7 +105,7 @@ func encode(zedErr zeerr.Error) *pbzederrv1.Error {
 	causes := make([]*pbzederrv1.Error, 0, len(zedErr.Causes()))
 
 	for _, cause := range zedErr.Causes() {
-		encodedCause := encode(cause)
+		encodedCause := e.encode(cause)
 		causes = append(causes, encodedCause)
 	}
 
