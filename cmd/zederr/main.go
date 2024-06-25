@@ -16,7 +16,6 @@ func main() {
 
 	err := command.NewRoot().Execute()
 	if err != nil {
-		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }
