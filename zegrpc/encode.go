@@ -34,11 +34,6 @@ func NewSimpleEncoder(statusCode codes.Code, statusMessage string) SimpleEncoder
 }
 
 func (e SimpleEncoder) Encode(err error) *status.Status {
-	statusErr, ok := status.FromError(err)
-	if ok {
-		return statusErr
-	}
-
 	var zedErr *zeerr.Error
 	if errors.As(err, &zedErr) {
 		return status.New(zedErr.GRPCCode(), zedErr.Message())
@@ -60,11 +55,6 @@ func NewFullEncoder(statusCode codes.Code, statusMessage string) SimpleEncoder {
 }
 
 func (e FullEncoder) Encode(err error) *status.Status {
-	statusErr, ok := status.FromError(err)
-	if ok {
-		return statusErr
-	}
-
 	var zedErr *zeerr.Error
 	if errors.As(err, &zedErr) {
 		pbErr := e.encode(zedErr)
