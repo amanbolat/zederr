@@ -40,13 +40,11 @@ func (e SimpleEncoder) Encode(err error) *status.Status {
 	}
 
 	var zedErr *zeerr.Error
-	if !errors.As(err, &zedErr) {
-		return status.New(e.statusCode, e.statusMessage)
+	if errors.As(err, &zedErr) {
+		return status.New(zedErr.GRPCCode(), zedErr.Message())
 	}
 
-	sts := status.New(zedErr.GRPCCode(), zedErr.Message())
-
-	return sts
+	return status.New(e.statusCode, e.statusMessage)
 }
 
 type FullEncoder struct {
@@ -68,19 +66,19 @@ func (e FullEncoder) Encode(err error) *status.Status {
 	}
 
 	var zedErr *zeerr.Error
-	if !errors.As(err, &zedErr) {
-		return status.New(e.statusCode, e.statusMessage)
+	if errors.As(err, &zedErr) {
+		pbErr := e.encode(zedErr)
+
+		sts := status.New(zedErr.GRPCCode(), zedErr.Message())
+		sts, err = sts.WithDetails(pbErr)
+		if err != nil {
+			panic(fmt.Errorf("failed to attach details to status: %w", err))
+		}
+
+		return sts
 	}
 
-	pbErr := e.encode(zedErr)
-
-	sts := status.New(zedErr.GRPCCode(), zedErr.Message())
-	sts, err = sts.WithDetails(pbErr)
-	if err != nil {
-		panic(fmt.Errorf("failed to attach details to status: %w", err))
-	}
-
-	return sts
+	return status.New(e.statusCode, e.statusMessage)
 }
 
 func (e FullEncoder) encode(zedErr *zeerr.Error) *pbzederrv1.Error {
